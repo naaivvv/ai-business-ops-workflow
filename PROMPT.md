@@ -300,9 +300,9 @@ SLACK_BOT_TOKEN=
 
 ### What to do
 
-Create the file `database/init.sql` with all table definitions. This file is auto-executed by PostgreSQL on first container start (via the Docker Compose volume mount).
+Execute the following SQL script in the Supabase Dashboard SQL Editor to create all necessary tables and functions.
 
-### database/init.sql
+### Supabase SQL Script
 
 ```sql
 -- ============================================
