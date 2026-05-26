@@ -70,7 +70,7 @@ Execute Workflow (called by other workflows).
 
 ## Purpose
 
-Centralized AI API call handler with rate limiting, provider failover, and usage logging. All workflows use this instead of calling OpenAI/Gemini directly.
+Centralized AI API call handler with rate limiting, provider failover, and usage logging. All workflows use this instead of calling OpenRouter/Hugging Face directly.
 
 ## Trigger
 
@@ -88,16 +88,16 @@ Execute Workflow (called by other workflows).
 
 | Preference | Primary Model | Failover Model |
 |-----------|--------------|----------------|
-| fast | OpenAI GPT-4o | Google Gemini |
-| large-context | Google Gemini | OpenAI GPT-4o |
-| embedding | OpenAI text-embedding-3-small | Google text-embedding-004 |
+| fast | OpenRouter Llama 3.3 70B | OpenRouter Gemini 2.5 Pro |
+| large-context | OpenRouter Gemini 2.5 Pro | OpenRouter Llama 3.3 70B |
+| embedding | Hugging Face all-MiniLM-L6-v2 | (None) |
 
 ## Actions
 
 1. Check Redis counter for daily token budget — if exceeded, return budget error
 2. Select model based on model_preference
 3. Execute API call with Retry on Fail (exponential backoff, 3 retries)
-4. On failure, automatically failover to secondary provider
+4. On failure, automatically failover to secondary model
 5. Log usage to workflow_logs via UTIL__WriteAuditLog (model, tokens, latency, cost)
 6. Return structured response: `{ response, model_used, tokens_input, tokens_output, latency_ms }`
 
@@ -328,7 +328,7 @@ Google Drive Trigger: new or modified file detected in `Knowledge-Base/` folder.
 3. **Compute content hash:** SHA-256 of extracted text content
 4. **Check documents table:** Compare content_hash against existing entry for this file
    - If hash matches (unchanged): skip processing, log as "no change"
-   - If hash differs (updated): delete old vectors from Qdrant, proceed with re-embedding
+   - If hash differs (updated): delete old vectors from pgvector, proceed with re-embedding
    - If no existing entry (new): proceed with embedding
 5. **Insert/update documents table:** title, source_type, source_url, content_hash, status='processing'
 6. **Call KB__ChunkAndEmbed** sub-workflow with document_id and extracted text
@@ -341,7 +341,7 @@ Google Drive Trigger: new or modified file detected in `Knowledge-Base/` folder.
 
 ## Purpose
 
-Split document text into chunks and generate vector embeddings for Qdrant storage.
+Split document text into chunks and generate vector embeddings for Supabase pgvector storage.
 
 ## Trigger
 
@@ -364,11 +364,10 @@ Execute Workflow (called by KB__IngestDocument).
 
 1. **Split text** into chunks using Text Splitter node (or Code node for custom logic)
 2. **Generate embeddings:** For each chunk, call UTIL__AICall with model_preference='embedding'
-3. **Upsert to Qdrant:** Use Qdrant Vector Store node (action: "Add Documents")
-   - Collection: knowledge_base (1536 dimensions, matching text-embedding-3-small)
-   - Payload metadata: document_id, chunk_index, source_url, title
-4. **Insert embeddings_metadata rows:** For each chunk, store document_id, chunk_index, chunk_text, vector_id, collection_name, embedding_model
-5. **Return chunk_count** to parent workflow
+3. **Insert into pgvector:** Use Postgres node to insert into `embeddings_metadata`
+   - SQL: `INSERT INTO embeddings_metadata (document_id, chunk_index, chunk_text, embedding, collection_name, embedding_model) VALUES ($1, $2, $3, $4, 'knowledge_base', 'sentence-transformers/all-MiniLM-L6-v2')`
+   - Parameters: document_id, chunk_index, chunk_text, array of embeddings
+4. **Return chunk_count** to parent workflow
 
 ---
 
@@ -391,7 +390,8 @@ Webhook (POST /api/knowledge/search).
 ## Actions
 
 1. **Embed query:** Call UTIL__AICall with model_preference='embedding' to convert query to vector
-2. **Search Qdrant:** Use Qdrant Vector Store node (action: "Get ranked documents")
+2. **Search pgvector:** Use Postgres node to call `match_documents` function
+   - SQL: `SELECT * FROM match_documents($1, 0.7, $2, 'knowledge_base')`
    - Return top_k most similar chunks with similarity scores
 3. **Generate answer:** Call UTIL__AICall with model_preference='fast'
    - System prompt: "Answer the question using only the provided context. If the context doesn't contain the answer, say so."

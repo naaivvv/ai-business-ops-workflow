@@ -13,11 +13,8 @@ The AI Business Operations Workspace is a modular AI-powered operational automat
 
 - n8n (with native AI Agent nodes powered by LangChain)
 - Google Workspace
-- PostgreSQL
-- Redis
-- Qdrant
-- OpenAI / Gemini APIs
-- Docker
+- Supabase (PostgreSQL + pgvector)
+- OpenRouter / Hugging Face APIs
 
 The system acts as an AI operational layer that automates:
 
@@ -80,7 +77,7 @@ Automatically:
 - Gmail (via 5-minute polling trigger or Google Pub/Sub push for near-real-time)
 - Slack (approval notifications, urgency alerts)
 - PostgreSQL (event logging, task creation)
-- OpenAI/Gemini (classification, draft generation via UTIL__AICall)
+- OpenRouter (classification, draft generation via UTIL__AICall)
 
 ### Gmail Trigger Strategy
 
@@ -128,7 +125,7 @@ Users or meeting recording systems upload transcript files (TXT, DOCX, VTT, SRT)
 - Google Calendar (deadline integration)
 - Slack (summary notifications)
 - PostgreSQL (action item tracking)
-- OpenAI/Gemini (summarization, extraction via UTIL__AICall)
+- OpenRouter (summarization, extraction via UTIL__AICall)
 
 ---
 
@@ -146,7 +143,7 @@ Converts organizational documents into searchable semantic memory with change de
 
 ### Capabilities
 
-- Semantic search (via Qdrant vector similarity)
+- Semantic search (via Supabase pgvector similarity)
 - RAG retrieval (context injection for AI responses)
 - AI question answering (webhook-based query API)
 - Organizational memory (versioned, deduplicated)
@@ -155,14 +152,14 @@ Converts organizational documents into searchable semantic memory with change de
 
 - **Change detection:** Content hash comparison on each ingestion run. If document unchanged, skip re-embedding.
 - **Version tracking:** Documents table tracks which version is currently embedded in the vector store.
-- **Deletion handling:** When a document is removed from Drive, corresponding vectors are deleted from Qdrant.
+- **Deletion handling:** When a document is removed from Drive, corresponding vectors are deleted from Supabase pgvector.
 - **Deduplication:** Content hash prevents re-processing identical documents from different sources.
 
 ### Embedding Model
 
-Locked to **OpenAI `text-embedding-3-small`** (1536 dimensions, $0.02/1M tokens).
+Locked to **Hugging Face `sentence-transformers/all-MiniLM-L6-v2`** (384 dimensions, free).
 
-> **Warning:** Changing embedding models later requires re-embedding the entire knowledge base. Lock your model choice early and configure your Qdrant collection dimensions to match.
+> **Warning:** Changing embedding models later requires re-embedding the entire knowledge base. Lock your model choice early and configure your pgvector dimensions to match.
 
 ---
 
@@ -212,8 +209,7 @@ AI Processing Layer
 Workflow Execution
 (Classification, Summarization, Task Creation)
          ↓
-State Management
-(PostgreSQL + Qdrant)
+State Persistence (Supabase PostgreSQL + pgvector)
          ↓
 Notifications & Reporting
 (Slack, Email, Google Docs)
@@ -232,27 +228,18 @@ Error Handling
 
 - n8n (with native AI Agent nodes)
 
-## Database Layer
+## Unified Data & Vector Layer
 
-- PostgreSQL
-
-## Queue & Cache Layer
-
-- Redis
-
-## Vector Database
-
-- Qdrant
+- Supabase (PostgreSQL + pgvector)
 
 ## AI Providers
 
-- OpenAI (GPT-4o for classification/generation, text-embedding-3-small for embeddings)
-- Google Gemini (large context processing, multimodal document analysis, failover provider)
+- OpenRouter (Llama 3.3 for classification/generation, Gemini 2.5 Pro for large context and failover)
+- Hugging Face (all-MiniLM-L6-v2 for embeddings)
 
 ## Infrastructure
 
-- Docker
-- Docker Compose
+- Cloud-Native (n8n Cloud + Supabase)
 
 ---
 
@@ -338,10 +325,10 @@ All event-processing workflows include deduplication at the entry point:
 
 AI API calls are centralized through `UTIL__AICall` sub-workflow:
 
-1. Checks Redis counter for daily API usage
-2. Selects appropriate model (OpenAI for fast tasks, Gemini for large-context)
+1. Checks daily API usage limit
+2. Selects appropriate model (OpenRouter Llama 3.3 for fast tasks, OpenRouter Gemini 2.5 for large-context)
 3. Implements retry with exponential backoff
-4. Falls back to secondary provider on failure (OpenAI → Gemini or vice versa)
+4. Falls back to secondary provider on failure (e.g., Llama 3.3 → Gemini 2.5)
 5. Logs usage (model, tokens, latency, cost) to `workflow_logs`
 6. Enforces daily token budget limits
 
@@ -351,7 +338,7 @@ AI API calls are centralized through `UTIL__AICall` sub-workflow:
 
 Future support for:
 
-- Queue mode (Redis-backed, with separate main + worker Docker services)
+- n8n Cloud managed queue mode (scales automatically)
 - Distributed workers (scale horizontally by adding worker containers)
 - Multi-tenant architecture
 - API gateways

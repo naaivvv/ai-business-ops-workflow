@@ -11,7 +11,7 @@ Purpose:
 
 - Workflow orchestration (modular entry-point + sub-workflow architecture)
 - Event automation (per-source triggers, not centralized routing)
-- API integrations (Google Workspace, Slack, OpenAI, Gemini)
+- API integrations (Google Workspace, Slack, OpenRouter, Hugging Face)
 - AI workflows (native AI Agent nodes powered by LangChain)
 
 ### n8n AI Agent Nodes
@@ -23,7 +23,7 @@ Capabilities:
 - Tool calling (expose sub-workflows as tools via Workflow Tool or MCP nodes)
 - Memory management (Window Buffer Memory for conversations, Vector Store for RAG)
 - Structured JSON output enforcement
-- Multi-model support (OpenAI, Anthropic, Google, local models)
+- Multi-model support (OpenRouter, Hugging Face, local models)
 - Execution logs showing the agent's reasoning chain
 
 Use AI Agent nodes for:
@@ -56,119 +56,98 @@ Purpose:
 
 # Queue & Cache
 
-## Redis
+## Managed n8n Cloud Queue
 
 Purpose:
 
-- Queue mode (separate n8n main process from worker execution)
-- Caching (reduce redundant API calls)
-- Rate limiting (daily token budget counters for AI providers)
-- Distributed workers (horizontal scaling)
+- n8n Cloud natively handles execution queuing and horizontal worker scaling without requiring a standalone Redis instance.
+- Rate limiting for AI providers is enforced via internal n8n states or directly within PostgreSQL.
 
 ---
 
 # Vector Database
 
-## Qdrant
+## Supabase pgvector
 
 Purpose:
 
-- Semantic search (similarity-based document retrieval)
-- Embeddings storage (1536-dimension vectors for text-embedding-3-small)
+- Semantic search (similarity-based document retrieval directly in PostgreSQL)
+- Embeddings storage (384-dimension vectors via `vector(384)`)
 - RAG pipelines (context injection for AI-generated responses)
+- Unifies relational metadata and vector indices into a single managed database
 
-### Collection Configuration
+### Vector Configuration
 
 | Setting | Value | Reason |
 |---------|-------|--------|
-| Collection name | `knowledge_base` | Default for organizational documents |
-| Vector dimensions | 1536 | Matches OpenAI text-embedding-3-small |
-| Distance metric | Cosine | Standard for text similarity |
+| Column type | `vector(384)` | Matches Hugging Face all-MiniLM-L6-v2 |
+| Index | `hnsw` | High-performance vector similarity search |
+| Distance metric | Cosine (`<=>`) | Standard for text similarity |
 
-> **Warning:** Vector dimensions must match your embedding model. Changing models later requires re-embedding your entire knowledge base and recreating the Qdrant collection.
+> **Warning:** Vector dimensions must match your embedding model. Changing models later requires re-embedding your entire knowledge base and recreating the vector column.
 
 ---
 
 # AI Providers
 
-## OpenAI
+## OpenRouter
 
 Used for:
 
-- Classification (email routing, urgency detection) — GPT-4o
-- Summarization (meeting transcripts, daily reports) — GPT-4o
-- Response/draft generation (email replies) — GPT-4o
-- Embeddings (document vectorization) — text-embedding-3-small
-
-### Embedding Model Selection
-
-| Model | Dimensions | Cost | Best For |
-|-------|-----------|------|----------|
-| text-embedding-3-small | 1536 | $0.02/1M tokens | General purpose, cost-effective ✅ Selected |
-| text-embedding-3-large | 3072 | $0.13/1M tokens | Higher accuracy, 6.5x more expensive |
-| text-embedding-004 (Gemini) | 768 | Free tier available | Budget-friendly alternative |
-
-**Selected: `text-embedding-3-small`** — best balance of cost, accuracy, and ecosystem support for organizational document search.
-
----
-
-## Google Gemini
-
-Used for:
-
-- Multimodal AI (image and document analysis)
-- Large context processing (long meeting transcripts, multi-page documents)
-- Failover provider (when OpenAI is unavailable or rate-limited)
+- Classification (email routing, urgency detection) — Llama 3.3 70B
+- Summarization (meeting transcripts, daily reports) — Llama 3.3 70B
+- Response/draft generation (email replies) — Llama 3.3 70B
+- Multimodal & Large Context — Gemini 2.5 Pro
 
 ### Provider Failover Strategy
 
 All AI calls go through the `UTIL__AICall` sub-workflow, which implements automatic failover:
 
 ```text
-Primary: OpenAI GPT-4o
+Primary: OpenRouter Llama 3.3 70B
     ↓ (on failure: timeout, rate limit, 5xx)
-Failover: Google Gemini
+Failover: OpenRouter Gemini 2.5 Pro
     ↓ (on failure)
 Error: Log to workflow_logs, alert via Slack
 ```
 
 ---
 
-# Infrastructure
+## Hugging Face
 
-## Docker
+Used for:
 
-Purpose:
+- Embeddings (document vectorization) — sentence-transformers/all-MiniLM-L6-v2
 
-- Containerization (consistent environments across dev/staging/prod)
-- Environment consistency (all services defined in docker-compose.yml)
-- Simplified deployment (single `docker compose up` command)
+### Embedding Model Selection
+
+| Model | Dimensions | Cost | Best For |
+|-------|-----------|------|----------|
+| all-MiniLM-L6-v2 | 384 | Free | General purpose, cost-effective ✅ Selected |
+
+**Selected: `all-MiniLM-L6-v2`** — best balance of being 100% free and ecosystem support for organizational document search.
 
 ---
 
-## Docker Compose
+# Infrastructure
+
+## Cloud-Native Setup
 
 Purpose:
 
-- Multi-service orchestration (n8n-main, n8n-worker, PostgreSQL, Redis, Qdrant)
-- Local development (full stack runs locally)
-- Infrastructure management (volumes, networking, health checks)
+- Scalable managed hosting with zero local infrastructure configuration.
+- Simplified operational overhead.
 
 ### Services Overview
 
 ```text
 ┌─────────────────────────────────────────────┐
-│              Docker Compose                  │
+│               Cloud-Native                   │
 │                                              │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐ │
-│  │ n8n-main │  │n8n-worker│  │ PostgreSQL│ │
-│  │ :5678    │  │          │  │ :5432     │ │
-│  └──────────┘  └──────────┘  └───────────┘ │
-│                                              │
-│  ┌──────────┐  ┌──────────┐                 │
-│  │  Redis   │  │  Qdrant  │                 │
-│  │  :6379   │  │  :6333   │                 │
-│  └──────────┘  └──────────┘                 │
+│  ┌───────────────────┐  ┌─────────────────┐ │
+│  │     n8n Cloud     │  │     Supabase    │ │
+│  │ (Logic & Compute) │  │ (Data & Vectors)│ │
+│  └───────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
 

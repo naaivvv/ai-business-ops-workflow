@@ -1,0 +1,41 @@
+# ============================================
+# Environment Variables & Secrets
+# ============================================
+.env
+.env.*
+!.env.example
+
+# ============================================
+# n8n & Node.js
+# ============================================
+node_modules/
+.n8n/
+npm-debug.log
+yarn-error.log
+
+# ============================================
+# Docker Data Volumes (If mapped locally)
+# ============================================
+postgres_data/
+qdrant_data/
+redis_data/
+n8n_data/
+pgdata/
+
+# ============================================
+# Backups and Temporary Files
+# ============================================
+backups/
+*.log
+tmp/
+temp/
+
+# ============================================
+# OS & IDE Files
+# ============================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

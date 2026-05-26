@@ -9,13 +9,11 @@
 
 ### Infrastructure
 
-- Install Docker and Docker Compose
-- Setup n8n (main + worker in queue mode)
-- Configure PostgreSQL with init.sql (all tables from DATABASE.md)
-- Configure Redis for queue mode and rate limiting
-- Configure Qdrant with knowledge_base collection (1536 dimensions)
-- Setup Google Workspace APIs (Gmail, Drive, Docs, Calendar) with **production-mode** OAuth tokens
-- Setup environment variables (.env file with all required keys)
+- Setup n8n Cloud instance
+- Provision Supabase project (PostgreSQL + pgvector)
+- Execute `init.sql` in Supabase SQL Editor (all tables from DATABASE.md)
+- Setup Google Workspace APIs (Gmail, Drive, Docs, Calendar) or use n8n built-in OAuth
+- Setup environment variables (.env file with all required keys for reference)
 - Setup Slack bot and workspace integration
 
 ### Foundational Workflows (Built First)
@@ -34,7 +32,7 @@
 
 ## Deliverables
 
-- Running local infrastructure (all 5 Docker services)
+- Active Supabase database and n8n Cloud instance
 - Gmail and Drive integration verified
 - Database connected with all tables created
 - All 5 foundational workflows operational and tested
@@ -118,7 +116,7 @@ If this exceeds one week, defer VTT/SRT format support to Week 7 and start with 
 ### Database & Infrastructure
 
 - Create `documents` and `embeddings_metadata` tables (if not in init.sql)
-- Verify Qdrant collection configuration: `knowledge_base`, 1536 dimensions, cosine distance
+- Verify `vector` extension is active in Supabase and `match_documents` function exists
 - Decide chunking strategy: fixed-size (500 tokens) with overlap (50 tokens, 10%)
 
 ### Workflows
@@ -127,30 +125,29 @@ If this exceeds one week, defer VTT/SRT format support to Week 7 and start with 
   - Google Drive trigger: new/modified file in `Knowledge-Base/` folder
   - Download and extract text (PDF, Google Docs, DOCX)
   - Compute content hash (SHA-256) for change detection
-  - Check documents table: skip if unchanged, delete old vectors if changed
+  - Check documents table: skip if unchanged, delete old vectors from pgvector if changed
   - Insert/update documents table
   - Call KB__ChunkAndEmbed sub-workflow
 - Build `KB__ChunkAndEmbed` sub-workflow
   - Split text into chunks (500 tokens, 50-token overlap)
   - Generate embeddings via UTIL__AICall (model_preference='embedding')
-  - Upsert to Qdrant via Qdrant Vector Store node
-  - Insert embeddings_metadata rows (document_id, chunk_index, vector_id)
+  - Insert embeddings into `embeddings_metadata` table via Postgres node
 - Build `KB__SemanticSearch` workflow
   - Webhook trigger (POST /api/knowledge/search)
   - Embed query via UTIL__AICall
-  - Search Qdrant for top_k similar chunks
+  - Search pgvector for top_k similar chunks (via `match_documents` function)
   - Generate RAG answer via UTIL__AICall
   - Return: answer, source documents with similarity scores
 
 ### Deduplication & Change Detection
 
 - Content hash prevents re-processing identical documents
-- Changed documents: delete old Qdrant vectors, re-chunk, re-embed
-- Deleted documents: propagate deletion to Qdrant (manual or scheduled cleanup)
+- Changed documents: delete old pgvector vectors, re-chunk, re-embed
+- Deleted documents: propagate deletion to pgvector (manual or scheduled cleanup)
 
 ## Deliverables
 
-- Searchable organizational memory (semantic search via Qdrant)
+- Searchable organizational memory (semantic search via Supabase pgvector)
 - Incremental document processing (only re-embed changed documents)
 - Webhook-based query API for knowledge retrieval
 - RAG-powered Q&A with source attribution
@@ -237,11 +234,10 @@ If this exceeds one week, defer VTT/SRT format support to Week 7 and start with 
 
 ### Infrastructure Hardening
 
-- Verify queue mode stability under load (simulate concurrent workflow executions)
-- Test worker scaling (add a second n8n-worker container)
-- Configure execution data retention (30 days success, 90 days errors)
+- Verify n8n Cloud execution stability under load
+- Configure execution data retention in n8n Cloud UI
 - Implement UTIL__BackupWorkflows (daily cron at 2am, push to private GitHub repo)
-- Add database backup script (daily pg_dump)
+- Enable automated daily backups in Supabase Dashboard
 
 ### Workflow Polish
 
@@ -263,8 +259,7 @@ If this exceeds one week, defer VTT/SRT format support to Week 7 and start with 
 
 - Verify ERROR__GlobalHandler covers all workflows
 - Test failure scenarios end-to-end
-- Setup Qdrant health check monitoring
-- Review Redis queue depth alerting
+- Check Supabase health and disk usage in dashboard
 
 ## Deliverables
 

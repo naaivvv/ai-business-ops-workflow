@@ -46,9 +46,9 @@ Reusable sub-workflows called by all entry-point workflows via the Execute Workf
 This sub-workflow centralizes all AI provider interactions:
 
 1. Check Redis counter for daily token budget
-2. Select model based on task type (OpenAI GPT-4o for fast tasks, Gemini for large-context)
+2. Select model based on task type (OpenRouter Llama 3.3 for fast tasks, OpenRouter Gemini 2.5 for large-context)
 3. Execute API call with retry and exponential backoff
-4. On failure, automatically failover to secondary provider (OpenAI → Gemini or vice versa)
+4. On failure, automatically failover to secondary provider (e.g., Llama 3.3 → Gemini 2.5)
 5. Log usage (model, tokens_input, tokens_output, latency_ms, cost_usd) to workflow_logs
 6. Return structured response to caller
 
@@ -77,9 +77,9 @@ Responsible for:
 
 ### AI Services
 
-- OpenAI GPT-4o (classification, summarization, draft generation)
-- OpenAI text-embedding-3-small (embeddings — 1536 dimensions)
-- Google Gemini (large-context processing, multimodal document analysis, failover)
+- OpenRouter meta-llama/llama-3.3-70b-instruct:free (classification, summarization, draft generation)
+- OpenRouter google/gemini-2.5-pro:free (large-context processing, multimodal document analysis, failover)
+- Hugging Face sentence-transformers/all-MiniLM-L6-v2 (embeddings — 384 dimensions)
 
 ### AI Safety Rails
 
@@ -106,7 +106,7 @@ Persistent operational storage.
 
 ### Database
 
-- PostgreSQL (unified workflow_logs table, events, tasks, approvals, documents)
+- Supabase PostgreSQL (unified workflow_logs table, events, tasks, approvals, documents, and pgvector embeddings)
 
 ### Stores
 
@@ -115,7 +115,7 @@ Persistent operational storage.
 - Workflow Logs (unified logging: AI calls, audits, errors — replaces separate ai_logs/audit_logs)
 - Approvals (with expiration, rejection notes, decision history)
 - Documents (with content hash for deduplication)
-- Embeddings Metadata (chunk-level tracking, Qdrant point IDs)
+- Embeddings Metadata (chunk-level tracking, directly storing 384-dim vectors)
 
 ---
 
@@ -126,8 +126,8 @@ Stores semantic organizational memory with incremental processing.
 ### Components
 
 - Chunking pipeline (with configurable strategy: fixed-size with overlap)
-- Embeddings (OpenAI text-embedding-3-small, locked at 1536 dimensions)
-- Vector database (Qdrant, collection dimensions must match embedding model)
+- Embeddings (Hugging Face sentence-transformers/all-MiniLM-L6-v2, locked at 384 dimensions)
+- Vector database (Supabase pgvector, dimension vector(384) matching embedding model)
 - Retrieval workflows (webhook-based query API)
 
 ### Incremental Processing
@@ -135,7 +135,7 @@ Stores semantic organizational memory with incremental processing.
 - Content hash comparison on each ingestion run
 - Skip unchanged documents, delete old vectors for changed documents
 - Version tracking in documents table
-- Deletion propagation from Drive to Qdrant
+- Deletion propagation from Drive to Supabase pgvector
 
 ---
 
@@ -222,7 +222,7 @@ AI Processing (UTIL__AICall)
     ↓
 Business Logic Execution
     ↓
-State Persistence (PostgreSQL + Qdrant)
+State Persistence (Supabase PostgreSQL + pgvector)
     ↓
 Audit Logging (UTIL__WriteAuditLog)
     ↓
@@ -233,24 +233,9 @@ Notification / Action (UTIL__SendSlackMessage)
 
 ---
 
-# Queue Architecture
+# Managed Queue Architecture
 
-## Redis Queue Mode
-
-Purpose:
-
-- Scalability (horizontal worker scaling)
-- Reliability (job persistence across restarts)
-- Parallel execution (multiple workers process jobs concurrently)
-- Worker separation (UI/triggers on main, execution on workers)
-
-### Configuration Requirements
-
-- `EXECUTIONS_MODE=queue` on all n8n processes
-- `N8N_ENCRYPTION_KEY` must be identical across main + all workers
-- Separate Docker services for n8n-main (UI/triggers) and n8n-worker (execution)
-- PostgreSQL required (SQLite is incompatible with queue mode)
-- Minimum 4 vCPU / 8GB RAM recommended for production
+Since this deployment relies on **n8n Cloud**, the queue mode (main process vs. worker execution), horizontal scaling, and job persistence are completely managed. There is no need to manually deploy or configure Redis.
 
 ---
 

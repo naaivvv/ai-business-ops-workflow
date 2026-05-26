@@ -6,264 +6,84 @@
 
 # Deployment Mode
 
-## Current Setup: n8n Cloud + Local Docker Supporting Services
+## Current Setup: Cloud-Native (n8n Cloud + Supabase)
 
 | Component | Where It Runs | URL |
 |-----------|--------------|-----|
 | **n8n** | ☁️ n8n Cloud | `https://edwin-bayog.app.n8n.cloud/` |
-| **PostgreSQL** | 🐳 Local Docker | `localhost:5432` |
-| **Qdrant** | 🐳 Local Docker | `localhost:6333` |
-| **Redis** | ❌ Not needed | n8n Cloud handles queue mode internally |
+| **PostgreSQL & Vectors** | ☁️ Supabase | Project Dashboard |
 
 ### What This Means
 
 - **Workflows are built in n8n Cloud** — open `https://edwin-bayog.app.n8n.cloud/` to create and manage workflows.
-- **PostgreSQL and Qdrant run locally** via Docker Compose — these are your custom application databases, separate from n8n's internal storage.
-- **Redis is NOT required** — n8n Cloud manages queue mode, workers, and execution scaling automatically.
+- **Supabase handles all data** — PostgreSQL and pgvector embeddings are fully managed in the cloud. No local Docker containers are required.
 - **Google OAuth is simpler** — n8n Cloud includes pre-verified Google integrations, so you may not need to create your own Google Cloud OAuth app. If n8n Cloud's built-in Google credential works, skip PROMPT 0.2's Google Cloud Console steps and use n8n's built-in OAuth flow instead.
 - **Webhook URLs use your cloud domain** — all webhook endpoints will be at `https://edwin-bayog.app.n8n.cloud/webhook/...` (publicly accessible, no tunnel needed).
 - **Execution links in Slack alerts** point to `https://edwin-bayog.app.n8n.cloud/workflow/executions/...`.
-
-### Self-Hosted Reference
-
-The Docker Compose configuration in PROMPT 0.1 includes the full self-hosted stack (n8n-main, n8n-worker, Redis) for future migration or reference. For your current cloud setup, only the `postgres` and `qdrant` services from that file are needed.
 
 ---
 
 # PHASE 0 — External Service Setup (Before Touching n8n)
 
-Complete ALL of these setup tasks before opening n8n. Each section is a standalone setup guide.
+Complete ALL of these setup tasks before opening n8n. Each section is a standal## PROMPT 0.1 — Supabase Setup (Database & Vector Store)
 
----
+> **Goal:** Create a Supabase project and get your PostgreSQL connection credentials.
 
-## PROMPT 0.1 — Docker Compose Infrastructure (Supporting Services)
+✂️ **COPY FROM HERE** ✂️
 
-> **Goal:** Get PostgreSQL and Qdrant running locally via Docker to support your n8n Cloud instance.
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
-### Current Deployment: n8n Cloud + Local Docker
-
-Since you're using **n8n Cloud** at `https://edwin-bayog.app.n8n.cloud/`, you only need Docker for the supporting services (PostgreSQL and Qdrant). n8n Cloud handles its own execution engine, queue mode, and workers automatically.
 
 ### What to do
 
-Create a `docker-compose.yml` in your project root with PostgreSQL and Qdrant. Also create the full self-hosted stack file for future reference.
+1. Go to [Supabase](https://supabase.com/) and create a new project.
+2. Wait for the database to provision.
+3. Go to **Project Settings -> Database** and copy the **Connection string (URI)**.
+4. Replace `[YOUR-PASSWORD]` with the database password you created.
 
 ### .env File
 
 Create `.env` in your project root with these values (replace placeholders):
 
 ```env
-# ============================================
-# CLOUD MODE — Supporting Services Only
-# ============================================
-
 # n8n Cloud Instance
 N8N_CLOUD_URL=https://edwin-bayog.app.n8n.cloud
 
-# PostgreSQL (runs locally via Docker)
-DB_POSTGRESDB_HOST=localhost
-DB_POSTGRESDB_PORT=5432
-DB_POSTGRESDB_DATABASE=operations
-DB_POSTGRESDB_USER=postgres
-DB_POSTGRESDB_PASSWORD=CHANGE_ME_STRONG_PASSWORD
+# Supabase (PostgreSQL + pgvector)
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_KEY=your-supabase-service-role-key
+SUPABASE_DB_PASSWORD=your-database-password
 
-# Qdrant (runs locally via Docker)
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
+# OpenRouter
+OPENROUTER_API_KEY=sk-or-v1-your-openrouter-key
 
-# OpenAI
-OPENAI_API_KEY=sk-your-openai-key
-
-# Gemini
-GOOGLE_GEMINI_API_KEY=your-gemini-key
+# Hugging Face
+HUGGINGFACE_API_KEY=hf_your-huggingface-key
 
 # Slack (filled in PROMPT 0.3)
 SLACK_BOT_TOKEN=
-
-# ============================================
-# SELF-HOSTED MODE — Full Stack (future reference)
-# ============================================
-# Uncomment these if you migrate to self-hosted:
-# N8N_HOST=localhost
-# N8N_PORT=5678
-# N8N_PROTOCOL=http
-# N8N_ENCRYPTION_KEY=GENERATE_A_32_CHAR_RANDOM_STRING_HERE
-# GENERIC_TIMEZONE=Asia/Manila
-# EXECUTIONS_MODE=queue
-# QUEUE_BULL_REDIS_HOST=redis
-# QUEUE_BULL_REDIS_PORT=6379
 ```
-
-### docker-compose.yml (Cloud Mode — Active Services)
-
-```yaml
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_POSTGRESDB_DATABASE}
-      POSTGRES_USER: ${DB_POSTGRESDB_USER}
-      POSTGRES_PASSWORD: ${DB_POSTGRESDB_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    restart: unless-stopped
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-
-volumes:
-  postgres_data:
-  qdrant_data:
-```
-
-> **Note:** Redis is NOT included because n8n Cloud handles queue mode internally.
-
-### docker-compose.selfhosted.yml (Full Stack — Future Reference)
-
-```yaml
-# Use this file if you migrate to self-hosted n8n:
-# docker compose -f docker-compose.selfhosted.yml up -d
-
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_POSTGRESDB_DATABASE}
-      POSTGRES_USER: ${DB_POSTGRESDB_USER}
-      POSTGRES_PASSWORD: ${DB_POSTGRESDB_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    restart: unless-stopped
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-
-  n8n-main:
-    image: n8nio/n8n:latest
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_HOST=${N8N_HOST}
-      - N8N_PORT=${N8N_PORT}
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
-      - EXECUTIONS_MODE=queue
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${DB_POSTGRESDB_DATABASE}
-      - DB_POSTGRESDB_USER=${DB_POSTGRESDB_USER}
-      - DB_POSTGRESDB_PASSWORD=${DB_POSTGRESDB_PASSWORD}
-      - QUEUE_BULL_REDIS_HOST=redis
-      - QUEUE_BULL_REDIS_PORT=6379
-    volumes:
-      - n8n_data:/home/node/.n8n
-    depends_on:
-      - postgres
-      - redis
-      - qdrant
-    command: n8n start
-
-  n8n-worker:
-    image: n8nio/n8n:latest
-    restart: unless-stopped
-    environment:
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
-      - EXECUTIONS_MODE=queue
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${DB_POSTGRESDB_DATABASE}
-      - DB_POSTGRESDB_USER=${DB_POSTGRESDB_USER}
-      - DB_POSTGRESDB_PASSWORD=${DB_POSTGRESDB_PASSWORD}
-      - QUEUE_BULL_REDIS_HOST=redis
-      - QUEUE_BULL_REDIS_PORT=6379
-    depends_on:
-      - n8n-main
-    command: n8n worker
-
-volumes:
-  postgres_data:
-  redis_data:
-  qdrant_data:
-  n8n_data:
-```
-
-### Commands
-
-```bash
-# Create database init file directory
-mkdir -p database
-
-# Start supporting services (Cloud mode)
-docker compose up -d
-
-# Verify containers are running
-docker compose ps
-
-# Expected output: postgres and qdrant running
-# n8n is at https://edwin-bayog.app.n8n.cloud/ (cloud)
-```
-
-### ⚠️ Network Connectivity: n8n Cloud → Local Docker
-
-n8n Cloud runs on the internet and **cannot directly reach `localhost`** on your machine. To connect your cloud n8n instance to your local PostgreSQL and Qdrant, you have three options:
-
-| Option | Complexity | Best For |
-|--------|-----------|----------|
-| **A. Expose via tunnel (recommended for dev)** | Low | Use [ngrok](https://ngrok.com/), [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/), or [tailscale](https://tailscale.com/) to expose local ports 5432 and 6333 to the internet with a stable URL. |
-| **B. Use cloud-hosted databases** | Medium | Use [Supabase](https://supabase.com/) (free PostgreSQL), [Neon](https://neon.tech/) (free PostgreSQL), or [Qdrant Cloud](https://cloud.qdrant.io/) (free tier). No Docker needed. |
-| **C. Self-host everything** | High | Run n8n locally using `docker-compose.selfhosted.yml`. Everything stays on localhost. |
-
-**Recommended for quickest start:** Option B — use Supabase (free) for PostgreSQL and Qdrant Cloud (free tier) for vectors. This eliminates all networking issues.
-
-**If using Option B (Supabase + Qdrant Cloud):**
-- Supabase: Create a project → copy the connection string → use as your Postgres credential in n8n
-- Qdrant Cloud: Create a cluster → copy the URL and API key → use as your Qdrant credential in n8n
-- Skip Docker Compose entirely — you don't need it
 
 ### Verification Checklist
 
-- [ ] PostgreSQL is accessible (locally on port 5432, or via cloud provider URL)
-- [ ] Qdrant is accessible (locally at `http://localhost:6333/dashboard`, or via Qdrant Cloud URL)
-- [ ] n8n Cloud is accessible at `https://edwin-bayog.app.n8n.cloud/`
-- [ ] You can log into your n8n Cloud account
+- [ ] Supabase project is active
+- [ ] Database connection string is saved securely
+
+✂️ **TO HERE** ✂️] You can log into your n8n Cloud account
+
+
+✂️ **TO HERE** ✂️
 
 ---
 
 ## PROMPT 0.2 — Google Cloud OAuth Setup
 
 > **Goal:** Create Google Cloud credentials for Gmail, Drive, Docs, and Calendar access.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### Step-by-Step Setup Guide
 
@@ -326,11 +146,19 @@ n8n Cloud runs on the internet and **cannot directly reach `localhost`** on your
 - [ ] n8n credential "Google Business Ops" is created and authorized
 - [ ] Test: Create a manual workflow with a Gmail node → it can list your inbox
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 0.3 — Slack Bot Setup
 
 > **Goal:** Create a Slack bot with permissions to post messages to any channel.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### Step-by-Step Setup Guide
 
@@ -376,78 +204,99 @@ n8n Cloud runs on the internet and **cannot directly reach `localhost`** on your
 - [ ] All 5 Slack channels are created
 - [ ] Test: Send a test message from n8n to `#ops-alerts`
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
-## PROMPT 0.4 — OpenAI API Key Setup
+## PROMPT 0.4 — OpenRouter API Key Setup
 
-> **Goal:** Get an OpenAI API key with access to GPT-4o and text-embedding-3-small.
+> **Goal:** Get an OpenRouter API key with access to free tier models (e.g., Llama 3.3 70B, Gemini 2.5 Pro).
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### Step-by-Step Setup Guide
 
-1. **Go to OpenAI Platform:** https://platform.openai.com/
+1. **Go to OpenRouter:** https://openrouter.ai/
 2. **Create API Key:**
-   - Go to "API keys" in the left sidebar
-   - Click "Create new secret key"
+   - Go to "Keys" in the profile menu
+   - Click "Create Key"
    - Name: `n8n-business-ops`
-   - Copy the key immediately (it won't be shown again)
+   - Copy the key immediately
 3. **Set Usage Limits (recommended):**
-   - Go to "Settings" → "Limits"
-   - Set a monthly hard limit (e.g., $50/month for development)
-   - Set email alert thresholds (e.g., alert at $30)
+   - OpenRouter allows setting credit limits to prevent unexpected charges, even when primarily using free models.
 4. **Verify model access:**
-   - Ensure your account has access to `gpt-4o` and `text-embedding-3-small`
-   - Free tier accounts may not have GPT-4o access — you may need to add billing
+   - Free models like `meta-llama/llama-3.3-70b-instruct:free` and `google/gemini-2.5-pro:free` are available without adding credits.
 
 ### Configure in n8n
 
 1. Go to **Credentials** → **Add Credential**
-2. Search for "OpenAI API"
-3. Enter your API key
-4. Save — name it `OpenAI Business Ops`
+2. Search for "Header Auth" (or use a custom OpenAI-compatible node)
+3. Enter your API key in the value field (e.g., `Bearer sk-or-v1-...`)
+4. Save — name it `OpenRouter API`
 
 ### Verification Checklist
 
-- [ ] API key saved in `.env` as `OPENAI_API_KEY`
-- [ ] Usage limits configured to prevent runaway costs
-- [ ] n8n credential "OpenAI Business Ops" is created
-- [ ] Test: Create a manual workflow with an OpenAI node → send a test prompt
+- [ ] API key saved in `.env` as `OPENROUTER_API_KEY`
+- [ ] n8n credential "OpenRouter API" is created
+- [ ] Test: Create a manual workflow with an HTTP Request node → send a test prompt to OpenRouter's `/api/v1/chat/completions` endpoint
+
+
+✂️ **TO HERE** ✂️
 
 ---
 
-## PROMPT 0.5 — Google Gemini API Key Setup
+## PROMPT 0.5 — Hugging Face API Key Setup
 
-> **Goal:** Get a Gemini API key as the failover AI provider.
+> **Goal:** Get a Hugging Face API key to generate embeddings via the free Inference API.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### Step-by-Step Setup Guide
 
-1. **Go to Google AI Studio:** https://aistudio.google.com/
+1. **Go to Hugging Face:** https://huggingface.co/settings/tokens
 2. **Get API Key:**
-   - Click "Get API Key" in the left sidebar
-   - Create a key for your Google Cloud project (or create a new one)
+   - Click "New token"
+   - Select "Read" role
+   - Name it `n8n-embeddings`
    - Copy the key
 3. **Update your .env file:**
    ```env
-   GOOGLE_GEMINI_API_KEY=your-gemini-key-here
+   HUGGINGFACE_API_KEY=hf_your-huggingface-key
    ```
 
 ### Configure in n8n
 
 1. Go to **Credentials** → **Add Credential**
-2. Search for "Google Gemini" (or "Google AI")
-3. Enter your API key
-4. Save — name it `Gemini Failover`
+2. Search for "Hugging Face Inference API"
+3. Enter your Access Token
+4. Save — name it `Hugging Face Embeddings`
 
 ### Verification Checklist
 
 - [ ] API key saved in `.env`
-- [ ] n8n credential "Gemini Failover" is created
-- [ ] Test: Send a test prompt via HTTP Request node to Gemini API
+- [ ] n8n credential "Hugging Face Embeddings" is created
+- [ ] Test: Send a test prompt via Hugging Face node to generate embeddings
+
+
+✂️ **TO HERE** ✂️
 
 ---
 
 ## PROMPT 0.6 — PostgreSQL Database Initialization
 
 > **Goal:** Create all required tables from DATABASE.md in PostgreSQL.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### What to do
 
@@ -463,6 +312,9 @@ Create the file `database/init.sql` with all table definitions. This file is aut
 
 -- Enable UUID generation
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Enable the pgvector extension (Supabase supports this out of the box)
+CREATE EXTENSION IF NOT EXISTS vector;
 
 -- ============================================
 -- USERS
@@ -586,7 +438,7 @@ CREATE TABLE documents (
     source_file_id TEXT,
     content_hash TEXT NOT NULL,
     chunk_count INTEGER DEFAULT 0,
-    embedding_model TEXT DEFAULT 'text-embedding-3-small',
+    embedding_model TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     collection_name TEXT DEFAULT 'knowledge_base',
     status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
@@ -599,20 +451,53 @@ CREATE INDEX idx_documents_source_file ON documents(source_file_id);
 CREATE INDEX idx_documents_status ON documents(status);
 
 -- ============================================
--- EMBEDDINGS METADATA
+-- EMBEDDINGS METADATA (pgvector)
 -- ============================================
 CREATE TABLE embeddings_metadata (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     chunk_index INTEGER NOT NULL,
     chunk_text TEXT NOT NULL,
-    vector_id TEXT NOT NULL,
+    embedding vector(384),
     collection_name TEXT NOT NULL DEFAULT 'knowledge_base',
-    embedding_model TEXT NOT NULL DEFAULT 'text-embedding-3-small',
+    embedding_model TEXT NOT NULL DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     created_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX idx_embeddings_document ON embeddings_metadata(document_id);
-CREATE INDEX idx_embeddings_vector ON embeddings_metadata(vector_id);
+-- HNSW index for vector similarity search
+CREATE INDEX idx_embeddings_vector ON embeddings_metadata USING hnsw (embedding vector_cosine_ops);
+
+-- ============================================
+-- SEMANTIC SEARCH FUNCTION (match_documents)
+-- ============================================
+CREATE OR REPLACE FUNCTION match_documents (
+  query_embedding vector(384),
+  match_threshold float,
+  match_count int,
+  filter_collection text DEFAULT 'knowledge_base'
+)
+RETURNS TABLE (
+  id uuid,
+  document_id uuid,
+  chunk_text text,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    embeddings_metadata.id,
+    embeddings_metadata.document_id,
+    embeddings_metadata.chunk_text,
+    1 - (embeddings_metadata.embedding <=> query_embedding) AS similarity
+  FROM embeddings_metadata
+  WHERE 1 - (embeddings_metadata.embedding <=> query_embedding) > match_threshold
+    AND embeddings_metadata.collection_name = filter_collection
+  ORDER BY embeddings_metadata.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
 
 -- ============================================
 -- SEED DATA: Insert test users
@@ -624,74 +509,28 @@ INSERT INTO users (email, name, role, department) VALUES
 
 ### Commands
 
-```bash
-# If containers are already running, recreate PostgreSQL to trigger init.sql
-docker compose down
-docker volume rm ai-business-ops-workflow_postgres_data  # Remove old data
-docker compose up -d
-
-# Verify tables were created
-docker exec -it $(docker compose ps -q postgres) psql -U postgres -d operations -c "\dt"
-```
+In the Supabase Dashboard, go to **SQL Editor** and paste the entire SQL block above. Click **Run** to execute the script.
 
 ### Verification Checklist
 
-- [ ] `init.sql` file exists at `database/init.sql`
-- [ ] All 7 tables appear when running `\dt` in psql
-- [ ] Seed users are present: `SELECT * FROM users;`
+- [ ] All tables are created in Supabase (check the Table Editor)
+- [ ] The `vector` extension is active
+- [ ] The `match_documents` function is created
+- [ ] Seed users are present
 
----
 
-## PROMPT 0.7 — Qdrant Collection Setup
+✂️ **TO HERE** ✂️
 
-> **Goal:** Create the `knowledge_base` collection in Qdrant with correct vector dimensions.
 
-### What to do
-
-After Qdrant is running (via Docker Compose), create the collection that matches your embedding model.
-
-### Commands
-
-```bash
-# Create the knowledge_base collection via Qdrant REST API
-curl -X PUT "http://localhost:6333/collections/knowledge_base" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vectors": {
-      "size": 1536,
-      "distance": "Cosine"
-    }
-  }'
-
-# Verify collection was created
-curl "http://localhost:6333/collections/knowledge_base"
-```
-
-> **Why 1536 dimensions?** This matches OpenAI's `text-embedding-3-small` model. If you change embedding models later, you must delete and recreate this collection with the new dimensions, then re-embed all documents.
-
-### Configure in n8n
-
-1. Open n8n at `https://edwin-bayog.app.n8n.cloud/`
-2. Go to **Credentials** → **Add Credential**
-3. Search for "Qdrant"
-4. API URL:
-   - **If using local Docker + tunnel:** Your tunnel URL (e.g., `https://your-tunnel.ngrok.io`)
-   - **If using Qdrant Cloud:** Your Qdrant Cloud cluster URL + API key
-   - **If self-hosted:** `http://qdrant:6333` (Docker internal hostname)
-5. Save — name it `Qdrant Knowledge Base`
-
-### Verification Checklist
-
-- [ ] Collection `knowledge_base` exists in Qdrant
-- [ ] Vector size is 1536, distance is Cosine
-- [ ] n8n credential "Qdrant Knowledge Base" is created and can connect from n8n Cloud
-- [ ] Qdrant dashboard shows the collection (local: `http://localhost:6333/dashboard`, or Qdrant Cloud dashboard)
-
----
 
 ## PROMPT 0.8 — Google Drive Folder Structure
 
 > **Goal:** Create the Drive folders that n8n will monitor for file triggers.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### What to do
 
@@ -718,11 +557,19 @@ My Drive/
 - [ ] `Knowledge-Base` folder exists in Drive
 - [ ] Both folder IDs are noted for later use in n8n workflows
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 0.9 — n8n Credentials Configuration
 
 > **Goal:** Set up all n8n credential entries so workflows can reference them.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### What to do
 
@@ -732,14 +579,13 @@ Open n8n at `https://edwin-bayog.app.n8n.cloud/` → **Credentials** and create 
 |---|----------------|------|-------|
 | 1 | Google OAuth2 API | `Google Business Ops` | Use n8n Cloud's built-in OAuth flow, or Client ID + Secret from PROMPT 0.2 |
 | 2 | Slack API | `Slack Business Ops Bot` | Bot token from PROMPT 0.3 |
-| 3 | OpenAI API | `OpenAI Business Ops` | API key from PROMPT 0.4 |
-| 4 | Google Gemini (or HTTP Header Auth) | `Gemini Failover` | API key from PROMPT 0.5 |
-| 5 | Postgres | `Postgres Operations` | **Cloud:** Use tunnel URL or Supabase connection string. **Self-hosted:** Host: `postgres`, Port: `5432` |
-| 6 | Qdrant | `Qdrant Knowledge Base` | **Cloud:** Use tunnel URL or Qdrant Cloud URL + API key. **Self-hosted:** `http://qdrant:6333` |
+| 3 | Header Auth | `OpenRouter API` | API key from PROMPT 0.4 |
+| 4 | Hugging Face Inference API | `Hugging Face Embeddings` | API key from PROMPT 0.5 |
+| 5 | Postgres | `Postgres Operations` | Use your Supabase connection string. |
 
 ### Verification Checklist
 
-- [ ] All 6 credentials are created and showing green/valid status
+- [ ] All 5 credentials are created and showing green/valid status
 - [ ] Test each by creating a quick manual workflow with the relevant node
 
 ---
@@ -748,11 +594,19 @@ Open n8n at `https://edwin-bayog.app.n8n.cloud/` → **Credentials** and create 
 
 Build these FIRST. Every workflow in Phases 2–6 depends on these utilities.
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 1.1 — Build `ERROR__GlobalHandler`
 
 > **Goal:** Create the global error handler that catches failures from all workflows and sends Slack alerts.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -804,11 +658,19 @@ Go to **every other workflow** you create → Settings → Error Workflow → se
 3. Execute it manually
 4. Verify: Slack message appears in `#ops-alerts` AND a row appears in `workflow_logs` with `log_type = 'error'`
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 1.2 — Build `UTIL__WriteAuditLog`
 
 > **Goal:** Create a reusable sub-workflow that writes structured log entries to the `workflow_logs` table.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -864,11 +726,19 @@ SETTINGS:
 2. Pass test data: `{ "workflow_name": "TEST", "log_type": "audit", "action": "test_entry", "status": "success" }`
 3. Verify: Row appears in `workflow_logs` table
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 1.3 — Build `UTIL__SendSlackMessage`
 
 > **Goal:** Create a reusable sub-workflow for sending Slack messages from any workflow.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -904,11 +774,19 @@ SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 1.4 — Build `UTIL__AICall`
 
 > **Goal:** Create the centralized AI API call handler with model selection, failover, and usage logging.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -928,27 +806,34 @@ EXPECTED INPUT:
 
 NODE 1 — Code node "Select Model":
 - Based on model_preference:
-  - "fast" → primary: "gpt-4o", failover: "gemini-pro"
-  - "large-context" → primary: "gemini-pro", failover: "gpt-4o"
-  - "embedding" → primary: "text-embedding-3-small", failover: "text-embedding-004"
+  - "fast" → primary: "meta-llama/llama-3.3-70b-instruct:free", failover: "google/gemini-2.5-pro:free"
+  - "large-context" → primary: "google/gemini-2.5-pro:free", failover: "meta-llama/llama-3.3-70b-instruct:free"
+  - "embedding" → primary: "sentence-transformers/all-MiniLM-L6-v2", failover: null
 - Record start timestamp for latency calculation
 
 NODE 2 — IF node "Is Embedding?":
 - Route to embedding path or chat completion path
 
-NODE 3A (embedding path) — OpenAI node "Generate Embedding":
-- Credential: OpenAI Business Ops
-- Resource: Embeddings
-- Model: text-embedding-3-small
-- Input: {{ prompt }}
+NODE 3A (embedding path) — HTTP Request node "Generate Embedding (Hugging Face)":
+- Method: POST
+- URL: `https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2`
+- Authentication: Header Auth (Credential: Hugging Face Embeddings)
+- Body: `{"inputs": ["{{ $json.prompt }}"]}`
 - Settings: Retry on Fail = true, Max Retries = 3, Wait Between Retries = exponential
 
-NODE 3B (chat path) — OpenAI node "Chat Completion":
-- Credential: OpenAI Business Ops
-- Model: gpt-4o
-- System Message: {{ system_message }}
-- User Message: {{ prompt }}
-- Response Format: JSON (if output_format === 'json')
+NODE 3B (chat path) — HTTP Request node "Chat Completion (OpenRouter)":
+- Method: POST
+- URL: `https://openrouter.ai/api/v1/chat/completions`
+- Authentication: Header Auth (Credential: OpenRouter API)
+- Body: 
+  `{
+    "model": "{{ $json.selected_model }}",
+    "messages": [
+      {"role": "system", "content": "{{ $json.system_message }}"},
+      {"role": "user", "content": "{{ $json.prompt }}"}
+    ]
+  }`
+- Response Format: JSON (add `"response_format": {"type": "json_object"}` to Body if output_format === 'json')
 - Max Tokens: {{ max_tokens }}
 - Settings: Retry on Fail = true, Max Retries = 3
 
@@ -956,8 +841,7 @@ NODE 4 — Code node "Calculate Usage":
 - Calculate latency_ms from start timestamp
 - Extract tokens from API response (usage.prompt_tokens, usage.completion_tokens)
 - Calculate cost_usd based on model pricing:
-  - gpt-4o: $2.50/1M input, $10.00/1M output
-  - text-embedding-3-small: $0.02/1M tokens
+  - Free models: $0.00
 
 NODE 5 — Execute Workflow node "Log Usage":
 - Call UTIL__WriteAuditLog with:
@@ -970,14 +854,14 @@ NODE 6 — Code node "Return Response":
 - Return:
   {
     "response": AI_OUTPUT,
-    "model_used": "gpt-4o",
+    "model_used": "{{ $json.selected_model }}",
     "tokens_input": 150,
     "tokens_output": 300,
     "latency_ms": 1200
   }
 
 ERROR HANDLING:
-- If primary model fails after 3 retries → route to failover model (Gemini via HTTP Request node)
+- If primary model fails after 3 retries → route to failover model (HTTP Request node to OpenRouter with failover model)
 - If failover also fails → return error object, do NOT throw (let caller decide)
 
 SETTINGS:
@@ -985,24 +869,23 @@ SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
-### Note on Failover
+### Note on OpenRouter Failover
 
-For the Gemini failover path, use an **HTTP Request node** since n8n's Gemini integration may vary:
+If the first HTTP request to OpenRouter fails, you can use the Error path of the node to trigger a second HTTP request with the `failover` model variable.
 
-```
-URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={{ $credentials.geminiApiKey }}
-Method: POST
-Body:
-{
-  "contents": [{ "parts": [{ "text": "{{ prompt }}" }] }]
-}
-```
+
+✂️ **TO HERE** ✂️
 
 ---
 
 ## PROMPT 1.5 — Build `UTIL__Deduplicate`
 
 > **Goal:** Create the deduplication sub-workflow that checks for and prevents duplicate event processing.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1053,11 +936,19 @@ SETTINGS:
 
 # PHASE 2 — Email Intelligence (Week 2)
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 2.1 — Build `EMAIL__ClassifyIncoming`
 
 > **Goal:** Build the email classification workflow with Gmail trigger, AI classification, deduplication, and Slack routing.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1143,11 +1034,19 @@ SETTINGS:
 - Activate this workflow when ready
 ```
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 2.2 — Build `EMAIL__GenerateDraft`
 
 > **Goal:** Build the AI email draft generation sub-workflow with safety rails.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1212,11 +1111,19 @@ SETTINGS:
 
 # PHASE 3 — Meeting Intelligence (Week 3)
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 3.1 — Build `MEET__ProcessTranscript`
 
 > **Goal:** Build the meeting transcript processor triggered by Google Drive file uploads.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### External Setup Required
 
@@ -1292,11 +1199,19 @@ SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 3.2 — Build `MEET__ExtractActions`
 
 > **Goal:** Build the action item extraction sub-workflow.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1341,11 +1256,19 @@ SETTINGS:
 
 # PHASE 4 — Knowledge Base (Week 4)
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 4.1 — Build `KB__IngestDocument`
 
 > **Goal:** Build the document ingestion workflow with change detection and incremental processing.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### External Setup Required
 
@@ -1389,13 +1312,9 @@ NODE 7 — IF node "Document Changed?":
 - Existing row, same hash → skip (no changes)
 - Existing row, different hash → update path (delete old vectors first)
 
-NODE 8A (update path) — HTTP Request node "Delete Old Qdrant Vectors":
-- Method: POST
-- URL: http://qdrant:6333/collections/knowledge_base/points/delete
-- Body: { "filter": { "must": [{ "key": "document_id", "match": { "value": "OLD_DOC_ID" } }] } }
-
-NODE 8B (update path) — Postgres node "Delete Old Embeddings Metadata":
+NODE 8 (update path) — Postgres node "Delete Old Embeddings Metadata":
 - SQL: DELETE FROM embeddings_metadata WHERE document_id = $1
+- Note: This will automatically delete the vectors from pgvector since they are stored in the same table.
 
 NODE 9 — Postgres node "Upsert Document":
 - SQL:
@@ -1418,11 +1337,19 @@ SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 4.2 — Build `KB__ChunkAndEmbed`
 
 > **Goal:** Build the chunking and embedding sub-workflow.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1455,19 +1382,13 @@ NODE 2 — Loop Over Items node "Process Each Chunk":
   - Call: UTIL__AICall
   - Input: { prompt: chunk_text, model_preference: "embedding" }
 
-  NODE 2B — Qdrant Vector Store node "Upsert":
-  - Credential: Qdrant Knowledge Base
-  - Operation: Add Documents
-  - Collection: knowledge_base
-  - Document: chunk_text
-  - Metadata: { document_id, chunk_index, title, source_url }
-  - Note: The Qdrant node handles embedding internally if configured with an embedding model sub-node.
-
-  NODE 2C — Postgres node "Insert Metadata":
+  NODE 2B — Postgres node "Insert Embedding":
+  - Credential: Postgres Operations
+  - Operation: Execute Query
   - SQL:
-    INSERT INTO embeddings_metadata (document_id, chunk_index, chunk_text, vector_id, collection_name, embedding_model)
-    VALUES ($1, $2, $3, $4, 'knowledge_base', 'text-embedding-3-small')
-  - vector_id: use the Qdrant point ID returned from the upsert
+    INSERT INTO embeddings_metadata (document_id, chunk_index, chunk_text, embedding, collection_name, embedding_model)
+    VALUES ($1, $2, $3, $4, 'knowledge_base', 'sentence-transformers/all-MiniLM-L6-v2')
+  - Parameters: [document_id, chunk_index, chunk_text, '[embedding_array_from_step_2A]']
 
 NODE 3 — Code node "Return Count":
 - Return: { chunk_count: total_chunks_processed }
@@ -1477,13 +1398,19 @@ SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
-> **n8n Tip:** You can use n8n's native AI Vector Store nodes instead of separate UTIL__AICall + Qdrant nodes. The "Qdrant Vector Store" node can accept a connected "Embeddings OpenAI" sub-node that handles embedding generation automatically. This is simpler but bypasses UTIL__AICall's logging and failover.
+
+✂️ **TO HERE** ✂️
 
 ---
 
 ## PROMPT 4.3 — Build `KB__SemanticSearch`
 
 > **Goal:** Build the webhook-based knowledge base query API with RAG.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1510,19 +1437,13 @@ NODE 2 — Execute Workflow node "Embed Query":
 - Call: UTIL__AICall
 - Input: { prompt: query, model_preference: "embedding" }
 
-NODE 3 — HTTP Request node "Search Qdrant":
-- Method: POST
-- URL: http://qdrant:6333/collections/knowledge_base/points/search
-- Body:
-  {
-    "vector": [embedding_array_from_step_2],
-    "limit": top_k,
-    "with_payload": true
-  }
+NODE 3 — Postgres node "Semantic Search (pgvector)":
+- SQL: SELECT * FROM match_documents($1, 0.7, $2, 'knowledge_base')
+- Parameters: ['[embedding_array_from_step_2]', top_k]
 
 NODE 4 — Code node "Format Context":
 - Extract the top_k results
-- Build context string from chunk payloads:
+- Build context string from the returned chunk_text:
   "Source 1 (similarity: 0.92): [chunk_text]\n\nSource 2 (similarity: 0.87): [chunk_text]..."
 
 NODE 5 — Execute Workflow node "Generate Answer":
@@ -1560,11 +1481,19 @@ SETTINGS:
 
 # PHASE 5 — Task Orchestration (Week 5)
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 5.1 — Build `TASK__CreateFromEvent`
 
 > **Goal:** Build the reusable task creation sub-workflow.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1612,11 +1541,19 @@ SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 5.2 — Build `TASK__SendReminders`
 
 > **Goal:** Build the daily task reminder cron workflow.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1668,11 +1605,19 @@ SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 5.3 — Build `TASK__Escalate`
 
 > **Goal:** Build the hourly task escalation cron workflow.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1726,11 +1671,19 @@ SETTINGS:
 
 # PHASE 6 — Reporting (Week 6)
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 6.1 — Build `REPORT__DailySummary`
 
 > **Goal:** Build the daily executive summary report.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1801,11 +1754,19 @@ SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 6.2 — Build `REPORT__WeeklyDigest`
 
 > **Goal:** Build the Monday morning weekly digest.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### n8n Workflow Prompt
 
@@ -1846,11 +1807,19 @@ SETTINGS:
 
 # PHASE 7 — Hardening & Backup (Week 7)
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 7.1 — Build `UTIL__BackupWorkflows`
 
 > **Goal:** Build the automated daily workflow backup to GitHub.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### External Setup Required
 
@@ -1921,11 +1890,19 @@ SETTINGS:
 
 > **Note:** n8n Cloud API is available on paid plans. Check your plan includes API access. If not, you can manually export workflows from Settings → Workflows → Export All as a fallback.
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 7.2 — Security Hardening Checklist
 
 > **Goal:** Review and secure all workflows for production readiness.
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ### Checklist (manual steps, not a workflow)
 
@@ -1982,9 +1959,17 @@ SECURITY HARDENING — Apply to all existing workflows:
 
 > This phase is manual work — no n8n workflows to build.
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 8.1 — Final Verification
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ```
 FINAL VERIFICATION CHECKLIST:
@@ -1992,9 +1977,7 @@ FINAL VERIFICATION CHECKLIST:
 Infrastructure:
 [ ] n8n Cloud accessible at https://edwin-bayog.app.n8n.cloud/
 [ ] PostgreSQL has all 7 tables (local Docker, Supabase, or Neon)
-[ ] Qdrant has knowledge_base collection (local Docker or Qdrant Cloud)
 [ ] n8n Cloud can connect to PostgreSQL (test with a Postgres node)
-[ ] n8n Cloud can connect to Qdrant (test with a Qdrant node)
 
 (Self-hosted only:)
 [ ] All 5 Docker containers healthy (docker compose ps)
@@ -2016,7 +1999,7 @@ Meeting Workflows:
 [ ] MEET__ExtractActions — action items created in tasks table
 
 Knowledge Base:
-[ ] KB__IngestDocument — upload doc to Knowledge-Base/ → vectors in Qdrant
+[ ] KB__IngestDocument — upload doc to Knowledge-Base/ → vectors in Supabase pgvector
 [ ] KB__ChunkAndEmbed — embeddings_metadata populated
 [ ] KB__SemanticSearch — POST to webhook → returns relevant answer with sources
 
@@ -2033,9 +2016,17 @@ Backup:
 [ ] UTIL__BackupWorkflows — all workflows exported to GitHub
 ```
 
+
+✂️ **TO HERE** ✂️
+
 ---
 
 ## PROMPT 8.2 — README Structure
+
+✂️ **COPY FROM HERE** ✂️
+
+**System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
+
 
 ```
 Create a comprehensive README.md for the project with:
@@ -2054,6 +2045,9 @@ Create a comprehensive README.md for the project with:
 12. Security Considerations
 13. Future Roadmap
 ```
+
+
+✂️ **TO HERE** ✂️
 
 ---
 

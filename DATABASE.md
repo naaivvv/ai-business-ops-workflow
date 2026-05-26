@@ -3,7 +3,12 @@
 ```markdown
 # Database Design
 
-# Database: PostgreSQL
+# Database: Supabase (PostgreSQL + pgvector)
+
+```sql
+-- Enable the pgvector extension to support embedding storage and similarity search
+CREATE EXTENSION IF NOT EXISTS vector;
+```
 
 ---
 
@@ -216,7 +221,7 @@ CREATE INDEX idx_documents_status ON documents(status);
 - `content_hash` (SHA-256 of extracted text) enables incremental processing — if the hash hasn't changed, skip re-embedding.
 - `source_file_id` is the Google Drive file ID, used for deduplication and change detection.
 - `embedding_model` records which model was used — changing models later requires re-embedding the entire knowledge base.
-- `collection_name` maps to the Qdrant collection where vectors are stored.
+- `collection_name` logically separates documents (e.g., 'knowledge_base', 'meeting_notes') within the vector table.
 
 ---
 
@@ -228,19 +233,53 @@ CREATE TABLE embeddings_metadata (
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     chunk_index INTEGER NOT NULL,
     chunk_text TEXT NOT NULL,
-    vector_id TEXT NOT NULL,
+    embedding vector(384),
     collection_name TEXT NOT NULL DEFAULT 'knowledge_base',
-    embedding_model TEXT NOT NULL DEFAULT 'text-embedding-3-small',
+    embedding_model TEXT NOT NULL DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_embeddings_document ON embeddings_metadata(document_id);
-CREATE INDEX idx_embeddings_vector ON embeddings_metadata(vector_id);
+-- HNSW index for vector similarity search
+CREATE INDEX idx_embeddings_vector ON embeddings_metadata USING hnsw (embedding vector_cosine_ops);
+```
+
+### Semantic Search Function (RAG)
+
+```sql
+CREATE OR REPLACE FUNCTION match_documents (
+  query_embedding vector(384),
+  match_threshold float,
+  match_count int,
+  filter_collection text DEFAULT 'knowledge_base'
+)
+RETURNS TABLE (
+  id uuid,
+  document_id uuid,
+  chunk_text text,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    embeddings_metadata.id,
+    embeddings_metadata.document_id,
+    embeddings_metadata.chunk_text,
+    1 - (embeddings_metadata.embedding <=> query_embedding) AS similarity
+  FROM embeddings_metadata
+  WHERE 1 - (embeddings_metadata.embedding <=> query_embedding) > match_threshold
+    AND embeddings_metadata.collection_name = filter_collection
+  ORDER BY embeddings_metadata.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
 ```
 
 ### Notes
 
-- `vector_id` is the Qdrant point ID — enables targeted deletion when a document is updated or removed.
+- `embedding` stores the 384-dimensional vector representation directly in PostgreSQL, eliminating the need for an external vector DB.
 - `ON DELETE CASCADE` ensures that when a document row is deleted, all its embedding metadata rows are automatically removed.
 - `chunk_text` stores the raw text for debugging and potential re-embedding without re-downloading the source document.
 
