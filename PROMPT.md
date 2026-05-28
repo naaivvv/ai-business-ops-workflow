@@ -581,7 +581,7 @@ Open n8n at `https://edwin-bayog.app.n8n.cloud/` → **Credentials** and create 
 | 2 | Slack API | `Slack Business Ops Bot` | Bot token from PROMPT 0.3 |
 | 3 | Header Auth | `OpenRouter API` | API key from PROMPT 0.4 |
 | 4 | Hugging Face Inference API | `Hugging Face Embeddings` | API key from PROMPT 0.5 |
-| 5 | Postgres | `Supabase API` | Use your Supabase connection string. |
+| 5 | Supabase | `Supabase API` | Use your Supabase connection string. |
 
 ### Verification Checklist
 
@@ -905,8 +905,10 @@ NODE 1 — Code node "Compute Hash":
 NODE 2 — Supabase node "Check Existing":
 - Credential: Supabase API
 - Operation: Execute Query
-- SQL: SELECT id FROM events WHERE dedup_hash = $1
-- Parameters: [computed_hash]
+- Operation: Get Many
+- Table: events
+- Filter: dedup_hash = computed_hash
+- Return limit: 1
 
 NODE 3 — IF node "Is Duplicate?":
 - Condition: query returned rows (length > 0)
@@ -915,11 +917,9 @@ NODE 4A (duplicate path) — Code node "Return Duplicate":
 - Return: { isDuplicate: true, existing_event_id: result[0].id }
 
 NODE 4B (new event path) — Supabase node "Insert Event":
-- SQL:
-  INSERT INTO events (event_type, source, dedup_hash, status)
-  VALUES ($1, $2, $3, 'processing')
-  RETURNING id
-- Parameters: [event_type, source, computed_hash]
+- Operation: Create
+- Table: events
+- Map properties: event_type, source, dedup_hash, status ('processing')
 
 NODE 5B — Code node "Return New":
 - Return: { isDuplicate: false, event_id: result[0].id }
@@ -992,13 +992,10 @@ NODE 5 — Code node "Parse Classification":
 - Extract: category, urgency, confidence, summary, suggested_department
 
 NODE 6 — Supabase node "Update Event":
-- SQL:
-  UPDATE events SET
-    payload = $1,
-    status = 'completed',
-    processed_at = NOW()
-  WHERE id = $2
-- Parameters: [JSON with classification results, event_id from dedup step]
+- Operation: Update
+- Table: events
+- Match by: id (event_id from dedup step)
+- Map properties: payload, status ('completed'), processed_at (NOW())
 
 NODE 7 — Execute Workflow node "Route Notification":
 - Call: UTIL__SendSlackMessage
@@ -1238,8 +1235,10 @@ NODE 2 — Code node "Parse Results":
 
 NODE 3 — Loop node "Create Tasks":
 - For each action_item:
-  - Supabase node: INSERT INTO tasks (title, description, priority, source_event_id, deadline, status)
-    VALUES ($1, $2, $3, $4, $5, 'open')
+  - Supabase node "Insert Task":
+    - Operation: Create
+    - Table: tasks
+    - Map properties: title, description, priority, source_event_id, deadline, status ('open')
 
 NODE 4 — Code node "Return Results":
 - Return: { action_items_count, decisions_count, risks_count, task_ids }
@@ -1269,7 +1268,7 @@ SETTINGS:
 
 ### External Setup Required
 
-Ensure the `Knowledge-Base` folder exists in Google Drive (from PROMPT 0.8) and Qdrant collection is configured (from PROMPT 0.7).
+Ensure the `Knowledge-Base` folder exists in Google Drive (from PROMPT 0.8) and Supabase pgvector table is configured (from PROMPT 0.6).
 
 ### n8n Workflow Prompt
 
@@ -1301,8 +1300,10 @@ NODE 5 — Code node "Compute Content Hash":
 - Also extract: title from filename, source_type from mimeType
 
 NODE 6 — Supabase node "Check Existing Document":
-- SQL: SELECT id, content_hash FROM documents WHERE source_file_id = $1
-- Parameters: [drive_file_id]
+- Operation: Get Many
+- Table: documents
+- Filter: source_file_id = drive_file_id
+- Return limit: 1
 
 NODE 7 — IF node "Document Changed?":
 - No existing row → new document path
@@ -1310,23 +1311,25 @@ NODE 7 — IF node "Document Changed?":
 - Existing row, different hash → update path (delete old vectors first)
 
 NODE 8 (update path) — Supabase node "Delete Old Embeddings Metadata":
-- SQL: DELETE FROM embeddings_metadata WHERE document_id = $1
-- Note: This will automatically delete the vectors from pgvector since they are stored in the same table.
+- Operation: Delete
+- Table: embeddings_metadata
+- Match by: document_id
 
 NODE 9 — Supabase node "Upsert Document":
-- SQL:
-  INSERT INTO documents (title, source_type, source_url, source_file_id, content_hash, status)
-  VALUES ($1, $2, $3, $4, $5, 'processing')
-  ON CONFLICT (content_hash) DO UPDATE SET
-    title = EXCLUDED.title, status = 'processing', updated_at = NOW()
-  RETURNING id
+- Operation: Upsert (or Create/Update based on existence)
+- Table: documents
+- Match by: content_hash
+- Map properties: title, source_type, source_url, source_file_id, content_hash, status ('processing')
 
 NODE 10 — Execute Workflow node "Chunk and Embed":
 - Call: KB__ChunkAndEmbed
 - Input: { document_id, text_content, collection_name: "knowledge_base" }
 
 NODE 11 — Supabase node "Mark Complete":
-- SQL: UPDATE documents SET status = 'completed', chunk_count = $1, processed_at = NOW() WHERE id = $2
+- Operation: Update
+- Table: documents
+- Match by: id
+- Map properties: status ('completed'), chunk_count, processed_at (NOW())
 
 NODE 12 — Execute Workflow node "Audit Log"
 
@@ -1435,8 +1438,9 @@ NODE 2 — Execute Workflow node "Embed Query":
 - Input: { prompt: query, model_preference: "embedding" }
 
 NODE 3 — Supabase node "Semantic Search (pgvector)":
-- SQL: SELECT * FROM match_documents($1, 0.7, $2, 'knowledge_base')
-- Parameters: ['[embedding_array_from_step_2]', top_k]
+- Operation: Execute Database Function
+- Function Name: match_documents
+- Parameters: query_embedding (array), match_threshold (0.7), match_count (top_k), filter_collection ('knowledge_base')
 
 NODE 4 — Code node "Format Context":
 - Extract the top_k results
@@ -1510,15 +1514,16 @@ EXPECTED INPUT:
 }
 
 NODE 1 — Supabase node "Resolve User":
-- SQL: SELECT id, slack_user_id FROM users WHERE email = $1
-- Parameters: [assigned_to]
+- Operation: Get Many
+- Table: users
+- Filter: email = assigned_to
+- Return limit: 1
 - If no user found, use NULL for assigned_to UUID
 
 NODE 2 — Supabase node "Insert Task":
-- SQL:
-  INSERT INTO tasks (title, description, assigned_to, priority, deadline, source_event_id, status)
-  VALUES ($1, $2, $3, $4, $5, $6, 'open')
-  RETURNING id
+- Operation: Create
+- Table: tasks
+- Map properties: title, description, assigned_to, priority, deadline, source_event_id, status ('open')
 
 NODE 3 — IF node "User Has Slack?":
 - Condition: slack_user_id is not null
@@ -1561,7 +1566,8 @@ TRIGGER: Cron node
 - Expression: 0 9 * * * (every day at 9:00 AM)
 
 NODE 1 — Supabase node "Query Upcoming Tasks":
-- SQL:
+- Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
+- SQL Query:
   SELECT t.*, u.name, u.email, u.slack_user_id
   FROM tasks t
   LEFT JOIN users u ON t.assigned_to = u.id
@@ -1571,7 +1577,8 @@ NODE 1 — Supabase node "Query Upcoming Tasks":
   ORDER BY t.deadline ASC
 
 NODE 2 — Supabase node "Query Overdue Tasks":
-- SQL:
+- Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
+- SQL Query:
   SELECT t.*, u.name, u.email, u.slack_user_id
   FROM tasks t
   LEFT JOIN users u ON t.assigned_to = u.id
@@ -1625,7 +1632,8 @@ TRIGGER: Cron node
 - Expression: 0 * * * * (every hour)
 
 NODE 1 — Supabase node "Query Overdue Unescalated":
-- SQL:
+- Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
+- SQL Query:
   SELECT t.*, u.name as assignee_name, u.email as assignee_email,
          m.slack_user_id as manager_slack_id, m.name as manager_name
   FROM tasks t
@@ -1642,9 +1650,10 @@ NODE 3 — Loop node "Escalate Each":
   For each task:
 
   NODE 3A — Supabase node "Mark Escalated":
-  - SQL:
-    UPDATE tasks SET escalated_at = NOW(), priority = 'critical', updated_at = NOW()
-    WHERE id = $1
+  - Operation: Update
+    - Table: tasks
+    - Match by: id
+    - Map properties: escalated_at (NOW()), priority ('critical'), updated_at (NOW())
 
   NODE 3B — Execute Workflow node "Notify Manager":
   - Call: UTIL__SendSlackMessage (if manager_slack_id exists)
@@ -1691,10 +1700,12 @@ TRIGGER: Cron node
 - Expression: 0 8 * * * (every day at 8:00 AM)
 
 NODE 1 — Supabase node "Emails Processed":
-- SQL: SELECT COUNT(*) as count FROM events WHERE event_type = 'email_incoming' AND created_at > NOW() - INTERVAL '24 hours'
+- Operation: Execute Query (or Get Many)
+- SQL Query: SELECT COUNT(*) as count FROM events WHERE event_type = 'email_incoming' AND created_at > NOW() - INTERVAL '24 hours'
 
 NODE 2 — Supabase node "Tasks Metrics":
-- SQL:
+- Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
+- SQL Query:
   SELECT
     COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as created,
     COUNT(*) FILTER (WHERE completed_at > NOW() - INTERVAL '24 hours') as completed,
@@ -1702,7 +1713,8 @@ NODE 2 — Supabase node "Tasks Metrics":
   FROM tasks
 
 NODE 3 — Supabase node "AI Usage":
-- SQL:
+- Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
+- SQL Query:
   SELECT
     COUNT(*) as total_calls,
     SUM(tokens_input) as total_input_tokens,
@@ -1713,10 +1725,12 @@ NODE 3 — Supabase node "AI Usage":
   WHERE log_type = 'ai_call' AND created_at > NOW() - INTERVAL '24 hours'
 
 NODE 4 — Supabase node "Errors Count":
-- SQL: SELECT COUNT(*) as count FROM workflow_logs WHERE log_type = 'error' AND created_at > NOW() - INTERVAL '24 hours'
+- Operation: Execute Query (or Get Many)
+- SQL Query: SELECT COUNT(*) as count FROM workflow_logs WHERE log_type = 'error' AND created_at > NOW() - INTERVAL '24 hours'
 
 NODE 5 — Supabase node "Approvals Status":
-- SQL:
+- Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
+- SQL Query:
   SELECT
     COUNT(*) FILTER (WHERE status = 'pending') as pending,
     COUNT(*) FILTER (WHERE approved_at > NOW() - INTERVAL '24 hours') as approved

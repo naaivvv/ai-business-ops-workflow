@@ -1,0 +1,386 @@
+{
+  "name": "REPORT__WeeklyDigest",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "custom",
+              "cronExpression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "report-weekly-cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as count FROM events WHERE event_type = 'email_incoming' AND created_at > NOW() - INTERVAL '7 days'"
+      },
+      "id": "report-weekly-emails-processed",
+      "name": "Emails Processed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as created,\n  COUNT(*) FILTER (WHERE completed_at > NOW() - INTERVAL '7 days') as completed,\n  COUNT(*) FILTER (WHERE status = 'open' AND deadline < NOW()) as overdue\nFROM tasks"
+      },
+      "id": "report-weekly-tasks-metrics",
+      "name": "Tasks Metrics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) as total_calls,\n  SUM(tokens_input) as total_input_tokens,\n  SUM(tokens_output) as total_output_tokens,\n  SUM(cost_usd) as total_cost,\n  AVG(latency_ms) as avg_latency\nFROM workflow_logs\nWHERE log_type = 'ai_call' AND created_at > NOW() - INTERVAL '7 days'"
+      },
+      "id": "report-weekly-ai-usage",
+      "name": "AI Usage",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as count FROM workflow_logs WHERE log_type = 'error' AND created_at > NOW() - INTERVAL '7 days'"
+      },
+      "id": "report-weekly-errors-count",
+      "name": "Errors Count",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) FILTER (WHERE status = 'pending') as pending,\n  COUNT(*) FILTER (WHERE approved_at > NOW() - INTERVAL '7 days') as approved\nFROM approvals"
+      },
+      "id": "report-weekly-approvals-status",
+      "name": "Approvals Status",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  (SELECT COUNT(*) FROM events WHERE event_type = 'email_incoming' AND created_at <= NOW() - INTERVAL '7 days' AND created_at > NOW() - INTERVAL '14 days') as emails_processed,\n  (SELECT COUNT(*) FROM tasks WHERE created_at <= NOW() - INTERVAL '7 days' AND created_at > NOW() - INTERVAL '14 days') as tasks_created,\n  (SELECT COUNT(*) FROM tasks WHERE completed_at <= NOW() - INTERVAL '7 days' AND completed_at > NOW() - INTERVAL '14 days') as tasks_completed,\n  (SELECT COUNT(*) FROM tasks WHERE status = 'open' AND deadline <= NOW() - INTERVAL '7 days' AND deadline > NOW() - INTERVAL '14 days') as tasks_overdue,\n  (SELECT COUNT(*) FROM workflow_logs WHERE log_type = 'ai_call' AND created_at <= NOW() - INTERVAL '7 days' AND created_at > NOW() - INTERVAL '14 days') as ai_total_calls,\n  (SELECT COALESCE(SUM(tokens_input), 0) FROM workflow_logs WHERE log_type = 'ai_call' AND created_at <= NOW() - INTERVAL '7 days' AND created_at > NOW() - INTERVAL '14 days') as ai_total_input_tokens,\n  (SELECT COALESCE(SUM(tokens_output), 0) FROM workflow_logs WHERE log_type = 'ai_call' AND created_at <= NOW() - INTERVAL '7 days' AND created_at > NOW() - INTERVAL '14 days') as ai_total_output_tokens,\n  (SELECT COALESCE(SUM(cost_usd), 0) FROM workflow_logs WHERE log_type = 'ai_call' AND created_at <= NOW() - INTERVAL '7 days' AND created_at > NOW() - INTERVAL '14 days') as ai_total_cost,\n  (SELECT COALESCE(AVG(latency_ms), 0) FROM workflow_logs WHERE log_type = 'ai_call' AND created_at <= NOW() - INTERVAL '7 days' AND created_at > NOW() - INTERVAL '14 days') as ai_avg_latency,\n  (SELECT COUNT(*) FROM workflow_logs WHERE log_type = 'error' AND created_at <= NOW() - INTERVAL '7 days' AND created_at > NOW() - INTERVAL '14 days') as errors_count,\n  (SELECT COUNT(*) FROM approvals WHERE status = 'pending' AND created_at <= NOW() - INTERVAL '7 days') as approvals_pending,\n  (SELECT COUNT(*) FROM approvals WHERE approved_at <= NOW() - INTERVAL '7 days' AND approved_at > NOW() - INTERVAL '14 days') as approvals_approved"
+      },
+      "id": "report-weekly-last-week-comparison",
+      "name": "Last Week Comparison",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function firstJson(nodeName) {\n  try {\n    return $(nodeName).first().json || {};\n  } catch (e) {\n    return {};\n  }\n}\n\nfunction numberValue(value) {\n  if (value === null || value === undefined || value === '') return 0;\n  const number = Number(value);\n  return Number.isFinite(number) ? number : 0;\n}\n\nfunction pctChange(current, previous) {\n  if (previous === 0 && current === 0) return 0;\n  if (previous === 0) return 100;\n  return Number((((current - previous) / previous) * 100).toFixed(2));\n}\n\nfunction completionRate(metrics) {\n  return metrics.tasks.created === 0\n    ? 0\n    : Number(((metrics.tasks.completed / metrics.tasks.created) * 100).toFixed(2));\n}\n\nfunction errorRate(metrics) {\n  const operationalVolume = metrics.emails.processed + metrics.tasks.created + metrics.ai_usage.total_calls;\n  return operationalVolume === 0\n    ? 0\n    : Number(((metrics.errors.count / operationalVolume) * 100).toFixed(2));\n}\n\nconst now = new Date();\nconst reportDate = now.toISOString().slice(0, 10);\nconst emails = firstJson('Emails Processed');\nconst tasks = firstJson('Tasks Metrics');\nconst ai = firstJson('AI Usage');\nconst errors = firstJson('Errors Count');\nconst approvals = firstJson('Approvals Status');\nconst previous = firstJson('Last Week Comparison');\n\nconst thisWeek = {\n  report_date: reportDate,\n  period: {\n    label: 'last_7_days',\n    generated_at: now.toISOString()\n  },\n  emails: {\n    processed: numberValue(emails.count)\n  },\n  tasks: {\n    created: numberValue(tasks.created),\n    completed: numberValue(tasks.completed),\n    overdue: numberValue(tasks.overdue)\n  },\n  ai_usage: {\n    total_calls: numberValue(ai.total_calls),\n    total_input_tokens: numberValue(ai.total_input_tokens),\n    total_output_tokens: numberValue(ai.total_output_tokens),\n    total_cost: numberValue(ai.total_cost),\n    avg_latency_ms: Math.round(numberValue(ai.avg_latency))\n  },\n  errors: {\n    count: numberValue(errors.count)\n  },\n  approvals: {\n    pending: numberValue(approvals.pending),\n    approved: numberValue(approvals.approved)\n  }\n};\n\nconst lastWeek = {\n  period: {\n    label: 'previous_7_days'\n  },\n  emails: {\n    processed: numberValue(previous.emails_processed)\n  },\n  tasks: {\n    created: numberValue(previous.tasks_created),\n    completed: numberValue(previous.tasks_completed),\n    overdue: numberValue(previous.tasks_overdue)\n  },\n  ai_usage: {\n    total_calls: numberValue(previous.ai_total_calls),\n    total_input_tokens: numberValue(previous.ai_total_input_tokens),\n    total_output_tokens: numberValue(previous.ai_total_output_tokens),\n    total_cost: numberValue(previous.ai_total_cost),\n    avg_latency_ms: Math.round(numberValue(previous.ai_avg_latency))\n  },\n  errors: {\n    count: numberValue(previous.errors_count)\n  },\n  approvals: {\n    pending: numberValue(previous.approvals_pending),\n    approved: numberValue(previous.approvals_approved)\n  }\n};\n\nconst trends = {\n  emails_change_pct: pctChange(thisWeek.emails.processed, lastWeek.emails.processed),\n  tasks_completion_rate_change: Number((completionRate(thisWeek) - completionRate(lastWeek)).toFixed(2)),\n  error_rate_change: Number((errorRate(thisWeek) - errorRate(lastWeek)).toFixed(2)),\n  ai_cost_change: pctChange(thisWeek.ai_usage.total_cost, lastWeek.ai_usage.total_cost),\n  this_week_completion_rate: completionRate(thisWeek),\n  last_week_completion_rate: completionRate(lastWeek),\n  this_week_error_rate: errorRate(thisWeek),\n  last_week_error_rate: errorRate(lastWeek)\n};\n\nconst metrics = {\n  this_week: thisWeek,\n  last_week: lastWeek,\n  trends\n};\n\nconst metricsTable = [\n  `Weekly Operations Digest - ${reportDate}`,\n  '',\n  'This Week',\n  `Emails processed: ${thisWeek.emails.processed}`,\n  `Tasks created: ${thisWeek.tasks.created}`,\n  `Tasks completed: ${thisWeek.tasks.completed}`,\n  `Open overdue tasks: ${thisWeek.tasks.overdue}`,\n  `AI calls: ${thisWeek.ai_usage.total_calls}`,\n  `AI cost: $${thisWeek.ai_usage.total_cost.toFixed(4)}`,\n  `Errors: ${thisWeek.errors.count}`,\n  `Approvals pending: ${thisWeek.approvals.pending}`,\n  `Approvals approved: ${thisWeek.approvals.approved}`,\n  '',\n  'Trends vs Previous Week',\n  `Emails change: ${trends.emails_change_pct}%`,\n  `Task completion rate change: ${trends.tasks_completion_rate_change} points`,\n  `Error rate change: ${trends.error_rate_change} points`,\n  `AI cost change: ${trends.ai_cost_change}%`\n].join('\\n');\n\nreturn [{\n  json: {\n    date: reportDate,\n    metrics,\n    trends,\n    metrics_json: JSON.stringify(metrics, null, 2),\n    metrics_table: metricsTable\n  }\n}];"
+      },
+      "id": "report-weekly-calculate-trends",
+      "name": "Calculate Trends",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__AICall",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"prompt\": `Generate a strategic weekly operations digest based on these metrics and trends:\\n${JSON.stringify($json.metrics, null, 2)}\\n\\nInclude:\\n1. Executive highlights\\n2. Week-over-week trends and what they mean\\n3. Operational risks requiring attention\\n4. AI usage and cost efficiency\\n5. Strategic recommendations for next week`,\n  \"system_message\": \"You are a senior business operations analyst. Write concise, strategic weekly executive digests. Use bullet points, call out material trend changes, and make recommendations actionable.\",\n  \"model_preference\": \"fast\",\n  \"output_format\": \"text\"\n} }}"
+      },
+      "id": "report-weekly-generate-ai-digest",
+      "name": "Generate AI Digest",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "title": "=Weekly Operations Digest - {{ $('Calculate Trends').item.json.date }}",
+        "content": "={{ `${$('Calculate Trends').item.json.metrics_table}\\n\\nAI Weekly Digest\\n${$json.response || $json.content || ''}\\n\\nMetrics and Trends JSON\\n${$('Calculate Trends').item.json.metrics_json}` }}"
+      },
+      "id": "report-weekly-create-weekly-digest",
+      "name": "Create Weekly Digest",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        0
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__SendSlackMessage",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"channel\": \"#executive-updates\",\n  \"message\": `*Weekly Operations Digest - ${$('Calculate Trends').item.json.date}*\\n\\n${$('Generate AI Digest').item.json.response || $('Generate AI Digest').item.json.content || 'Digest unavailable'}\\n\\n*Report:* ${$json.documentUrl || $json.url || $json.webViewLink || 'Link unavailable'}`\n} }}"
+      },
+      "id": "report-weekly-notify-executives",
+      "name": "Notify Executives",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"workflow_name\": \"REPORT__WeeklyDigest\",\n  \"execution_id\": $execution.id,\n  \"log_type\": \"action\",\n  \"action\": \"weekly_digest_created\",\n  \"input_payload\": {\n    \"schedule\": \"0 9 * * 1\",\n    \"period\": \"last_7_days\",\n    \"comparison_period\": \"previous_7_days\"\n  },\n  \"output_payload\": {\n    \"date\": $('Calculate Trends').item.json.date,\n    \"metrics\": $('Calculate Trends').item.json.metrics,\n    \"trends\": $('Calculate Trends').item.json.trends,\n    \"document_url\": $('Create Weekly Digest').item.json.documentUrl || $('Create Weekly Digest').item.json.url || $('Create Weekly Digest').item.json.webViewLink || null\n  },\n  \"status\": \"success\"\n} }}"
+      },
+      "id": "report-weekly-audit-log",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## REPORT__WeeklyDigest\nMonday 9:00 AM executive weekly operations digest.\n\n- Aggregates seven-day email, task, AI usage, error, and approval metrics\n- Compares against the previous seven-day period\n- Calculates trend percentages and rate changes\n- Generates a strategic digest via UTIL__AICall\n- Creates a Google Doc and notifies #executive-updates",
+        "height": 380,
+        "width": 2500,
+        "color": 6
+      },
+      "id": "report-weekly-note",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Emails Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emails Processed": {
+      "main": [
+        [
+          {
+            "node": "Tasks Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tasks Metrics": {
+      "main": [
+        [
+          {
+            "node": "AI Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Usage": {
+      "main": [
+        [
+          {
+            "node": "Errors Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Errors Count": {
+      "main": [
+        [
+          {
+            "node": "Approvals Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approvals Status": {
+      "main": [
+        [
+          {
+            "node": "Last Week Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Last Week Comparison": {
+      "main": [
+        [
+          {
+            "node": "Calculate Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Trends": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Digest": {
+      "main": [
+        [
+          {
+            "node": "Create Weekly Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Weekly Digest": {
+      "main": [
+        [
+          {
+            "node": "Notify Executives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Executives": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "ERROR__GlobalHandler",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "00000000-0000-0000-0000-000000000018",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "",
+  "tags": []
+}

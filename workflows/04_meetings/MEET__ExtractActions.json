@@ -3,115 +3,136 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger",
+      "id": "50cd7470-5f62-4ffb-8a3f-b6bfdbf366a4",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        -448,
+        304
+      ]
     },
     {
       "parameters": {
-        "values": {
-          "string": [
+        "assignments": {
+          "assignments": [
             {
+              "id": "a1",
               "name": "prompt",
-              "value": "Extract action items, decisions, and risks from this meeting transcript.\n\nTranscript:\n{{ $json.transcript_text }}\n\nRespond with JSON:\n{\n  \"action_items\": [\n    { \"description\": \"...\", \"owner\": \"person name or null\", \"deadline\": \"date or null\", \"priority\": \"high/medium/low\" }\n  ],\n  \"decisions\": [\n    { \"decision\": \"...\", \"context\": \"...\" }\n  ],\n  \"risks\": [\n    { \"risk\": \"...\", \"severity\": \"high/medium/low\" }\n  ]\n}"
+              "value": "Extract action items, decisions, and risks from this meeting transcript.\n\nTranscript:\n{{ $json.transcript_text }}\n\nRespond with JSON:\n{\n  \"action_items\": [\n    { \"description\": \"...\", \"owner\": \"person name or null\", \"deadline\": \"date or null\", \"priority\": \"high/medium/low\" }\n  ],\n  \"decisions\": [\n    { \"decision\": \"...\", \"context\": \"...\" }\n  ],\n  \"risks\": [\n    { \"risk\": \"...\", \"severity\": \"high/medium/low\" }\n  ]\n}",
+              "type": "string"
             },
             {
+              "id": "a2",
               "name": "system_message",
-              "value": "You are a meeting analyst. Extract concrete, actionable items with specific owners and deadlines when mentioned. Be precise — only extract real commitments, not vague discussions."
+              "value": "You are a meeting analyst. Extract concrete, actionable items with specific owners and deadlines when mentioned. Be precise — only extract real commitments, not vague discussions.",
+              "type": "string"
             },
             {
+              "id": "a3",
               "name": "model_preference",
-              "value": "fast"
+              "value": "fast",
+              "type": "string"
             },
             {
+              "id": "a4",
               "name": "output_format",
-              "value": "json"
+              "value": "json",
+              "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "set_ai_input",
+      "id": "6b6f44d6-7ed5-4bc3-9fe4-00c76ad9bbc9",
       "name": "Prepare AI Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
-      "position": [200, 0]
+      "position": [
+        -240,
+        304
+      ]
     },
     {
       "parameters": {
-        "workflowId": "UTIL__AICall"
+        "workflowId": "UTIL__AICall",
+        "options": {}
       },
-      "id": "ai_extract",
+      "id": "13ee542f-fa51-49d8-958f-58a9a4439158",
       "name": "AI Extract",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
-      "position": [400, 0]
+      "position": [
+        -48,
+        304
+      ]
     },
     {
       "parameters": {
         "jsCode": "const responseText = $json.response || $json.content || '{}';\nlet parsed = { action_items: [], decisions: [], risks: [] };\ntry {\n  const jsonStr = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();\n  parsed = JSON.parse(jsonStr);\n} catch (e) {}\n\nreturn { json: parsed };"
       },
-      "id": "parse_results",
+      "id": "ed831d0c-f797-434c-85b9-5de0af348b55",
       "name": "Parse Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [600, 0]
+      "position": [
+        160,
+        304
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
+          "number": [
             {
-              "id": "condition-id",
-              "leftValue": "={{ $json.action_items && $json.action_items.length > 0 }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
+              "value1": "={{ $json.action_items ? $json.action_items.length : 0 }}",
+              "operation": "larger",
+              "value2": 0
             }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
+          ]
+        }
       },
-      "id": "if_has_actions",
+      "id": "d2b627c9-560e-4914-a8ba-0c32efda1bc7",
       "name": "IF has actions",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 3,
-      "position": [800, 0]
+      "typeVersion": 1,
+      "position": [
+        368,
+        304
+      ]
     },
     {
       "parameters": {
+        "operation": "splitOutItems",
         "fieldToSplitOut": "action_items",
         "options": {}
       },
-      "id": "split_actions",
+      "id": "8ec612c2-01a9-4585-8830-d578ac2c0995",
       "name": "Split Action Items",
       "type": "n8n-nodes-base.itemLists",
-      "typeVersion": 3,
-      "position": [1000, -100]
+      "typeVersion": 1,
+      "position": [
+        560,
+        192
+      ]
     },
     {
       "parameters": {
+        "batchSize": 1,
         "options": {}
       },
-      "id": "loop_tasks",
+      "id": "39de439c-254b-456d-a623-251a2f4970c1",
       "name": "Create Tasks",
-      "type": "n8n-nodes-base.loop",
+      "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 1,
-      "position": [1200, -100]
+      "position": [
+        768,
+        192
+      ]
     },
     {
       "parameters": {
-        "operation": "create",
+        "operation": "insert",
         "tableId": "tasks",
         "fieldsUi": {
           "fieldValues": [
@@ -142,23 +163,52 @@
           ]
         }
       },
-      "id": "supabase_insert",
-      "name": "Supabase node",
+      "id": "d3cca000-540c-4286-bef3-d78f9653a2d6",
+      "name": "Insert Task",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1400, -100]
+      "position": [
+        960,
+        192
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const parsed = $('Parse Results').first().json;\n\nlet taskIds = [];\ntry {\n  const supabaseItems = $('Supabase node').all();\n  if (supabaseItems && supabaseItems.length > 0) {\n    taskIds = supabaseItems.map(item => item.json.id).filter(id => id !== undefined);\n  }\n} catch(e) {}\n\nreturn {\n  json: {\n    action_items_count: parsed.action_items ? parsed.action_items.length : 0,\n    decisions_count: parsed.decisions ? parsed.decisions.length : 0,\n    risks_count: parsed.risks ? parsed.risks.length : 0,\n    task_ids: taskIds\n  }\n};"
+        "jsCode": "const parsed = $('Parse Results').first().json;\n\nlet taskIds = [];\ntry {\n  const supabaseItems = $('Insert Task').all();\n  if (supabaseItems && supabaseItems.length > 0) {\n    taskIds = supabaseItems.map(item => item.json.id).filter(id => id !== undefined);\n  }\n} catch(e) {}\n\nreturn {\n  json: {\n    action_items_count: parsed.action_items ? parsed.action_items.length : 0,\n    decisions_count: parsed.decisions ? parsed.decisions.length : 0,\n    risks_count: parsed.risks ? parsed.risks.length : 0,\n    task_ids: taskIds\n  }\n};"
       },
-      "id": "return_results",
+      "id": "ac5f8b81-9e03-48e7-9711-6100e254af9f",
       "name": "Return Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1400, 100]
+      "position": [
+        960,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Extract Actions\n",
+        "height": 400,
+        "width": 1664,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        160
+      ],
+      "id": "581bacb5-c9f2-46a2-96c9-d984c2d8ada0",
+      "name": "Sticky Note1"
     }
   ],
+  "pinData": {},
   "connections": {
     "When Executed by Another Workflow": {
       "main": [
@@ -237,7 +287,7 @@
       "main": [
         [
           {
-            "node": "Supabase node",
+            "node": "Insert Task",
             "type": "main",
             "index": 0
           }
@@ -251,7 +301,7 @@
         ]
       ]
     },
-    "Supabase node": {
+    "Insert Task": {
       "main": [
         [
           {
@@ -263,8 +313,21 @@
       ]
     }
   },
+  "active": false,
   "settings": {
-    "callerPolicy": "any",
-    "errorWorkflow": "ERROR__GlobalHandler"
-  }
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "89bb0d36-cefc-419c-9414-d4c1389ff5af",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "4X61hx5ltgqOE8mb",
+  "tags": []
 }

@@ -1,0 +1,354 @@
+{
+  "name": "TASK__CreateFromEvent",
+  "nodes": [
+    {
+      "parameters": {
+        "inputDataMode": "defineBelow",
+        "schema": [
+          {
+            "name": "title",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "assigned_to",
+            "type": "string"
+          },
+          {
+            "name": "priority",
+            "type": "string"
+          },
+          {
+            "name": "deadline",
+            "type": "string"
+          },
+          {
+            "name": "source_event_id",
+            "type": "string"
+          }
+        ]
+      },
+      "id": "task-create-trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (!data.title) {\n  throw new Error('Missing required field: title');\n}\n\nconst validPriorities = ['critical', 'high', 'medium', 'low'];\nconst priority = data.priority || 'medium';\nif (!validPriorities.includes(priority)) {\n  throw new Error(`Invalid priority: \"${priority}\". Must be one of: ${validPriorities.join(', ')}`);\n}\n\nreturn [{\n  json: {\n    title: data.title,\n    description: data.description || null,\n    assigned_to: data.assigned_to || null,\n    priority,\n    deadline: data.deadline || null,\n    source_event_id: data.source_event_id || null\n  }\n}];"
+      },
+      "id": "task-create-validate",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "users",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "string",
+        "filterString": "email=eq.{{ $json.assigned_to }}"
+      },
+      "id": "task-create-resolve-user",
+      "name": "Resolve User",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Validate Input').first().json;\nconst resolvedUser = $input.first().json || {};\n\nconst assignedToUuid = resolvedUser.id || null;\nconst slackUserId = resolvedUser.slack_user_id || null;\n\nreturn [{\n  json: {\n    title: input.title,\n    description: input.description,\n    assigned_to: assignedToUuid,\n    priority: input.priority,\n    deadline: input.deadline,\n    source_event_id: input.source_event_id,\n    assignee_email: input.assigned_to,\n    assignee_name: resolvedUser.name || null,\n    slack_user_id: slackUserId\n  }\n}];"
+      },
+      "id": "task-create-prepare-payload",
+      "name": "Prepare Task Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "tasks",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.title }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ $json.description }}"
+            },
+            {
+              "fieldId": "assigned_to",
+              "fieldValue": "={{ $json.assigned_to }}"
+            },
+            {
+              "fieldId": "priority",
+              "fieldValue": "={{ $json.priority }}"
+            },
+            {
+              "fieldId": "deadline",
+              "fieldValue": "={{ $json.deadline }}"
+            },
+            {
+              "fieldId": "source_event_id",
+              "fieldValue": "={{ $json.source_event_id }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "open"
+            }
+          ]
+        }
+      },
+      "id": "task-create-insert-task",
+      "name": "Insert Task",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-slack-user-id",
+              "leftValue": "={{ $('Prepare Task Payload').first().json.slack_user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "task-create-user-has-slack",
+      "name": "User Has Slack?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__SendSlackMessage",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"channel\": `@${$('Prepare Task Payload').first().json.slack_user_id}`,\n  \"message\": `📋 *New Task Assigned*\\n*Title:* ${$('Prepare Task Payload').first().json.title}\\n*Priority:* ${$('Prepare Task Payload').first().json.priority}\\n*Deadline:* ${$('Prepare Task Payload').first().json.deadline || 'No deadline'}\\n*Description:* ${$('Prepare Task Payload').first().json.description || 'No description provided'}`\n} }}"
+      },
+      "id": "task-create-notify-assignee",
+      "name": "Notify Assignee",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"workflow_name\": \"TASK__CreateFromEvent\",\n  \"execution_id\": $execution.id,\n  \"log_type\": \"action\",\n  \"action\": \"task_created\",\n  \"input_payload\": $('Validate Input').first().json,\n  \"output_payload\": {\n    \"task_id\": $('Insert Task').first().json.id,\n    \"assigned_to\": $('Prepare Task Payload').first().json.assigned_to,\n    \"slack_notified\": Boolean($('Prepare Task Payload').first().json.slack_user_id)\n  },\n  \"status\": \"success\"\n} }}"
+      },
+      "id": "task-create-audit-log",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const task = $('Insert Task').first().json;\nconst payload = $('Prepare Task Payload').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    task_id: task.id || null,\n    assigned_to: payload.assigned_to,\n    assignee_email: payload.assignee_email,\n    slack_notified: Boolean(payload.slack_user_id)\n  }\n}];"
+      },
+      "id": "task-create-return-result",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## TASK__CreateFromEvent\nCallable task creation sub-workflow.\n\n- Resolves assignee email to users.id\n- Inserts an open task linked to source_event_id\n- Sends Slack DM when users.slack_user_id exists\n- Writes an audit log entry",
+        "height": 360,
+        "width": 1840,
+        "color": 4
+      },
+      "id": "task-create-note",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -260
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Resolve User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve User": {
+      "main": [
+        [
+          {
+            "node": "Prepare Task Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Task Payload": {
+      "main": [
+        [
+          {
+            "node": "Insert Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Task": {
+      "main": [
+        [
+          {
+            "node": "User Has Slack?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Has Slack?": {
+      "main": [
+        [
+          {
+            "node": "Notify Assignee",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Assignee": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "ERROR__GlobalHandler",
+    "callerPolicy": "any",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "00000000-0000-0000-0000-000000000014",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "",
+  "tags": []
+}

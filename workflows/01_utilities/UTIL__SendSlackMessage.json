@@ -1,0 +1,98 @@
+{
+  "name": "UTIL__SendSlackMessage",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst channel = item.channel || '#ops-alerts';\nconst message = item.message;\n\nif (!message) {\n  throw new Error('Missing required parameter: message');\n}\n\nreturn {\n  json: {\n    channel: channel,\n    message: message,\n    thread_ts: item.thread_ts || ''\n  }\n};"
+      },
+      "id": "validate",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $json.channel }}",
+          "mode": "name"
+        },
+        "text": "={{ $json.message }}",
+        "otherOptions": {
+          "threadTs": "={{ $json.thread_ts ? $json.thread_ts : undefined }}"
+        }
+      },
+      "id": "slack_node",
+      "name": "Send Message",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [400, 0],
+      "credentials": {
+        "slackApi": {
+          "id": "0QT3vEsrQsq6Pr7G",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const slackResult = $input.first().json;\n\nreturn {\n  json: {\n    success: true,\n    message_ts: slackResult.ts || (slackResult.message ? slackResult.message.ts : null),\n    channel: slackResult.channel\n  }\n};"
+      },
+      "id": "return_result",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 0]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Message": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "any",
+    "errorWorkflow": "CpXv8Are7dDLolBo"
+  }
+}

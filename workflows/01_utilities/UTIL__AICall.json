@@ -1,0 +1,325 @@
+{
+  "name": "UTIL__AICall",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst pref = item.model_preference || 'fast';\n\nlet primary = \"meta-llama/llama-3.3-70b-instruct:free\";\nlet failover = \"google/gemini-2.5-pro:free\";\nlet is_embedding = false;\n\nif (pref === 'large-context') {\n  primary = \"google/gemini-2.5-pro:free\";\n  failover = \"meta-llama/llama-3.3-70b-instruct:free\";\n} else if (pref === 'embedding') {\n  primary = \"sentence-transformers/all-MiniLM-L6-v2\";\n  failover = null;\n  is_embedding = true;\n}\n\nreturn {\n  json: {\n    ...item,\n    primary_model: primary,\n    failover_model: failover,\n    is_embedding: is_embedding,\n    start_time: Date.now()\n  }\n};"
+      },
+      "id": "select_model",
+      "name": "Select Model",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_embedding }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "is_embedding",
+      "name": "Is Embedding?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: [$json.prompt] }) }}",
+        "options": {}
+      },
+      "id": "hf_embedding",
+      "name": "Generate Embedding (Hugging Face)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [600, -200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hfId",
+          "name": "Hugging Face Embeddings"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst body = {\n  model: item.primary_model,\n  messages: [\n    { role: \"system\", content: item.system_message || \"You are a helpful assistant.\" },\n    { role: \"user\", content: item.prompt }\n  ]\n};\n\nif (item.max_tokens) {\n  body.max_tokens = item.max_tokens;\n}\n\nif (item.output_format === 'json') {\n  body.response_format = { type: \"json_object\" };\n}\n\nreturn { json: { ...item, request_body: body } };"
+      },
+      "id": "prep_primary",
+      "name": "Prepare Chat Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request_body) }}",
+        "options": {}
+      },
+      "id": "chat_primary",
+      "name": "Chat Completion (OpenRouter)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [800, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "openRouterId",
+          "name": "OpenRouter API"
+        }
+      },
+      "settings": {
+        "continueOnFail": true
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.choices != undefined }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check_primary",
+      "name": "Did Primary Succeed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const orig = $('Select Model').first().json;\nconst body = {\n  model: orig.failover_model,\n  messages: [\n    { role: \"system\", content: orig.system_message || \"You are a helpful assistant.\" },\n    { role: \"user\", content: orig.prompt }\n  ]\n};\n\nif (orig.max_tokens) {\n  body.max_tokens = orig.max_tokens;\n}\n\nif (orig.output_format === 'json') {\n  body.response_format = { type: \"json_object\" };\n}\n\nreturn { json: { ...orig, request_body: body } };"
+      },
+      "id": "prep_failover",
+      "name": "Prepare Failover Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request_body) }}",
+        "options": {}
+      },
+      "id": "chat_failover",
+      "name": "Chat Completion Failover",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1400, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "openRouterId",
+          "name": "OpenRouter API"
+        }
+      },
+      "settings": {
+        "continueOnFail": true
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Select Model').first().json;\nconst httpData = $input.first().json;\n\nlet aiOutput = '';\nlet promptTokens = 0;\nlet completionTokens = 0;\nlet modelUsed = original.primary_model;\n\nif (original.is_embedding) {\n  aiOutput = httpData; \n} else {\n  const failoverItems = $('Chat Completion Failover').all();\n  if (failoverItems && failoverItems.length > 0) {\n    modelUsed = original.failover_model;\n  }\n\n  if (httpData.choices && httpData.choices.length > 0) {\n    aiOutput = httpData.choices[0].message.content;\n    promptTokens = httpData.usage ? httpData.usage.prompt_tokens : 0;\n    completionTokens = httpData.usage ? httpData.usage.completion_tokens : 0;\n  } else {\n    aiOutput = \"ERROR: \" + JSON.stringify(httpData);\n  }\n}\n\nconst latencyMs = Date.now() - original.start_time;\n\nreturn {\n  json: {\n    ...original,\n    response: aiOutput,\n    model_used: modelUsed,\n    tokens_input: promptTokens,\n    tokens_output: completionTokens,\n    latency_ms: latencyMs,\n    cost_usd: 0.00,\n    workflow_name: \"UTIL__AICall\",\n    log_type: \"ai_call\",\n    action: original.is_embedding ? \"ai_embedding\" : \"ai_completion\",\n    input_payload: original.prompt\n  }\n};"
+      },
+      "id": "calc_usage",
+      "name": "Calculate Usage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog",
+        "options": {}
+      },
+      "id": "log_usage",
+      "name": "Log Usage",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1800, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const calcData = $('Calculate Usage').first().json;\n\nreturn {\n  json: {\n    response: calcData.response,\n    model_used: calcData.model_used,\n    tokens_input: calcData.tokens_input,\n    tokens_output: calcData.tokens_output,\n    latency_ms: calcData.latency_ms,\n    cost_usd: calcData.cost_usd\n  }\n};"
+      },
+      "id": "return_response",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 0]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Select Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Model": {
+      "main": [
+        [
+          {
+            "node": "Is Embedding?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Embedding?": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding (Hugging Face)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Chat Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding (Hugging Face)": {
+      "main": [
+        [
+          {
+            "node": "Calculate Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Chat Request": {
+      "main": [
+        [
+          {
+            "node": "Chat Completion (OpenRouter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Completion (OpenRouter)": {
+      "main": [
+        [
+          {
+            "node": "Did Primary Succeed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Did Primary Succeed?": {
+      "main": [
+        [
+          {
+            "node": "Calculate Usage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failover Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Failover Request": {
+      "main": [
+        [
+          {
+            "node": "Chat Completion Failover",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Completion Failover": {
+      "main": [
+        [
+          {
+            "node": "Calculate Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Usage": {
+      "main": [
+        [
+          {
+            "node": "Log Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Usage": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "any",
+    "errorWorkflow": "CpXv8Are7dDLolBo"
+  }
+}

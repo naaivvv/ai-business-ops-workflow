@@ -29,6 +29,7 @@ backups/
 *.log
 tmp/
 temp/
+scratch
 
 # ============================================
 # OS & IDE Files

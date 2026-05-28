@@ -1,0 +1,234 @@
+{
+  "name": "KB__ChunkAndEmbed",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c67f83de-47e3-4968-9731-738b4f7eb751",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nitems.forEach(item => {\n  const textContent = item.json.text_content || '';\n  const documentId = item.json.document_id;\n  const collectionName = item.json.collection_name || 'knowledge_base';\n  \n  const paragraphs = textContent.split('\\n\\n');\n  const MAX_CHARS = 2000;\n  const OVERLAP_CHARS = 200;\n  \n  let currentChunk = '';\n  let chunkIndex = 0;\n  \n  for (let i = 0; i < paragraphs.length; i++) {\n    const p = paragraphs[i];\n    \n    if ((currentChunk.length + p.length) > MAX_CHARS && currentChunk.length > 0) {\n      // Save current chunk\n      results.push({\n        json: {\n          chunk_index: chunkIndex++,\n          chunk_text: currentChunk.trim(),\n          document_id: documentId,\n          collection_name: collectionName\n        }\n      });\n      \n      // Start new chunk with overlap\n      let overlapText = currentChunk.slice(-OVERLAP_CHARS);\n      const lastSpace = overlapText.indexOf(' ');\n      if (lastSpace !== -1 && lastSpace < OVERLAP_CHARS / 2) {\n         overlapText = overlapText.slice(lastSpace + 1);\n      }\n      currentChunk = overlapText + '\\n\\n' + p;\n    } else {\n      currentChunk += (currentChunk ? '\\n\\n' : '') + p;\n    }\n  }\n  \n  if (currentChunk.trim().length > 0) {\n    results.push({\n      json: {\n        chunk_index: chunkIndex++,\n        chunk_text: currentChunk.trim(),\n        document_id: documentId,\n        collection_name: collectionName\n      }\n    });\n  }\n});\n\nreturn results;"
+      },
+      "id": "b5a83123-9494-4bdc-ac01-98ba04205848",
+      "name": "Chunk Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "a980b7e1-bd6c-4a0d-adc5-e58ef5f36488",
+      "name": "Process Each Chunk",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    prompt: $json.chunk_text,\n    model_preference: 'embedding'\n  }\n};"
+      },
+      "id": "cd815266-0ee3-4dcf-8223-5968a19cf9e3",
+      "name": "Prepare Embedding Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__AICall",
+        "options": {}
+      },
+      "id": "d4771dee-02e5-45e8-bd61-3df1bc51b5c8",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        304,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "embeddings_metadata",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "document_id",
+              "fieldValue": "={{ $('Process Each Chunk').first().json.document_id }}"
+            },
+            {
+              "fieldId": "chunk_index",
+              "fieldValue": "={{ $('Process Each Chunk').first().json.chunk_index }}"
+            },
+            {
+              "fieldId": "chunk_text",
+              "fieldValue": "={{ $('Process Each Chunk').first().json.chunk_text }}"
+            },
+            {
+              "fieldId": "embedding",
+              "fieldValue": "={{ $json.response }}"
+            },
+            {
+              "fieldId": "collection_name",
+              "fieldValue": "={{ $('Process Each Chunk').first().json.collection_name }}"
+            }
+          ]
+        }
+      },
+      "id": "774352b5-4fd0-47c7-ae11-269dc1a95115",
+      "name": "Insert Embedding",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        496,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    chunk_count: $('Chunk Text').all().length\n  }\n};"
+      },
+      "id": "5091b37c-90de-4f90-9c16-8aa4844568e9",
+      "name": "Return Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Chunk and Embed\n",
+        "height": 496,
+        "width": 1168,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -64
+      ],
+      "id": "c6e4f510-a2d2-482b-ad10-5647f595e898",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Chunk Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Text": {
+      "main": [
+        [
+          {
+            "node": "Process Each Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Each Chunk": {
+      "main": [
+        [
+          {
+            "node": "Prepare Embedding Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Embedding Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Insert Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Embedding": {
+      "main": [
+        [
+          {
+            "node": "Process Each Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "CpXv8Are7dDLolBo",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "b3381505-c57b-4117-b409-46359acf6921",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "3zE30DDyaAnXJNPS",
+  "tags": []
+}

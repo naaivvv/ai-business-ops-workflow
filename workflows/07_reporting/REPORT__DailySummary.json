@@ -1,0 +1,354 @@
+{
+  "name": "REPORT__DailySummary",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "custom",
+              "cronExpression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "report-daily-cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as count FROM events WHERE event_type = 'email_incoming' AND created_at > NOW() - INTERVAL '24 hours'"
+      },
+      "id": "report-daily-emails-processed",
+      "name": "Emails Processed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as created,\n  COUNT(*) FILTER (WHERE completed_at > NOW() - INTERVAL '24 hours') as completed,\n  COUNT(*) FILTER (WHERE status = 'open' AND deadline < NOW()) as overdue\nFROM tasks"
+      },
+      "id": "report-daily-tasks-metrics",
+      "name": "Tasks Metrics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) as total_calls,\n  SUM(tokens_input) as total_input_tokens,\n  SUM(tokens_output) as total_output_tokens,\n  SUM(cost_usd) as total_cost,\n  AVG(latency_ms) as avg_latency\nFROM workflow_logs\nWHERE log_type = 'ai_call' AND created_at > NOW() - INTERVAL '24 hours'"
+      },
+      "id": "report-daily-ai-usage",
+      "name": "AI Usage",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as count FROM workflow_logs WHERE log_type = 'error' AND created_at > NOW() - INTERVAL '24 hours'"
+      },
+      "id": "report-daily-errors-count",
+      "name": "Errors Count",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) FILTER (WHERE status = 'pending') as pending,\n  COUNT(*) FILTER (WHERE approved_at > NOW() - INTERVAL '24 hours') as approved\nFROM approvals"
+      },
+      "id": "report-daily-approvals-status",
+      "name": "Approvals Status",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function firstJson(nodeName) {\n  try {\n    return $(nodeName).first().json || {};\n  } catch (e) {\n    return {};\n  }\n}\n\nfunction numberValue(value) {\n  if (value === null || value === undefined || value === '') return 0;\n  const number = Number(value);\n  return Number.isFinite(number) ? number : 0;\n}\n\nconst now = new Date();\nconst reportDate = now.toISOString().slice(0, 10);\nconst emails = firstJson('Emails Processed');\nconst tasks = firstJson('Tasks Metrics');\nconst ai = firstJson('AI Usage');\nconst errors = firstJson('Errors Count');\nconst approvals = firstJson('Approvals Status');\n\nconst metrics = {\n  report_date: reportDate,\n  period: {\n    label: 'last_24_hours',\n    generated_at: now.toISOString()\n  },\n  emails: {\n    processed: numberValue(emails.count)\n  },\n  tasks: {\n    created: numberValue(tasks.created),\n    completed: numberValue(tasks.completed),\n    overdue: numberValue(tasks.overdue)\n  },\n  ai_usage: {\n    total_calls: numberValue(ai.total_calls),\n    total_input_tokens: numberValue(ai.total_input_tokens),\n    total_output_tokens: numberValue(ai.total_output_tokens),\n    total_cost: numberValue(ai.total_cost),\n    avg_latency_ms: Math.round(numberValue(ai.avg_latency))\n  },\n  errors: {\n    count: numberValue(errors.count)\n  },\n  approvals: {\n    pending: numberValue(approvals.pending),\n    approved: numberValue(approvals.approved)\n  }\n};\n\nconst metricsTable = [\n  `Daily Operations Report - ${reportDate}`,\n  '',\n  'Metrics',\n  `Emails processed: ${metrics.emails.processed}`,\n  `Tasks created: ${metrics.tasks.created}`,\n  `Tasks completed: ${metrics.tasks.completed}`,\n  `Open overdue tasks: ${metrics.tasks.overdue}`,\n  `AI calls: ${metrics.ai_usage.total_calls}`,\n  `AI input tokens: ${metrics.ai_usage.total_input_tokens}`,\n  `AI output tokens: ${metrics.ai_usage.total_output_tokens}`,\n  `AI cost: $${metrics.ai_usage.total_cost.toFixed(4)}`,\n  `Average AI latency: ${metrics.ai_usage.avg_latency_ms} ms`,\n  `Errors: ${metrics.errors.count}`,\n  `Approvals pending: ${metrics.approvals.pending}`,\n  `Approvals approved: ${metrics.approvals.approved}`\n].join('\\n');\n\nreturn [{\n  json: {\n    date: reportDate,\n    metrics,\n    metrics_json: JSON.stringify(metrics, null, 2),\n    metrics_table: metricsTable\n  }\n}];"
+      },
+      "id": "report-daily-build-metrics",
+      "name": "Build Metrics Object",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__AICall",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"prompt\": `Generate an executive operations summary based on these daily metrics:\\n${JSON.stringify($json.metrics, null, 2)}\\n\\nInclude:\\n1. Highlights (what went well)\\n2. Issues (errors, overdue tasks)\\n3. AI usage efficiency\\n4. Recommendations for tomorrow`,\n  \"system_message\": \"You are a business operations analyst. Write concise, actionable executive summaries. Use bullet points. Highlight anything requiring immediate attention.\",\n  \"model_preference\": \"fast\",\n  \"output_format\": \"text\"\n} }}"
+      },
+      "id": "report-daily-generate-ai-summary",
+      "name": "Generate AI Summary",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "title": "=Daily Operations Report \u2014 {{ $('Build Metrics Object').item.json.date }}",
+        "content": "={{ `${$('Build Metrics Object').item.json.metrics_table}\\n\\nAI Executive Summary\\n${$json.response || $json.content || ''}\\n\\nMetrics JSON\\n${$('Build Metrics Object').item.json.metrics_json}` }}"
+      },
+      "id": "report-daily-create-report",
+      "name": "Create Report",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        0
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__SendSlackMessage",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"channel\": \"#executive-updates\",\n  \"message\": `*Daily Operations Report - ${$('Build Metrics Object').item.json.date}*\\n\\n${$('Generate AI Summary').item.json.response || $('Generate AI Summary').item.json.content || 'Summary unavailable'}\\n\\n*Report:* ${$json.documentUrl || $json.url || $json.webViewLink || 'Link unavailable'}`\n} }}"
+      },
+      "id": "report-daily-notify-executives",
+      "name": "Notify Executives",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"workflow_name\": \"REPORT__DailySummary\",\n  \"execution_id\": $execution.id,\n  \"log_type\": \"action\",\n  \"action\": \"daily_summary_created\",\n  \"input_payload\": {\n    \"schedule\": \"0 8 * * *\",\n    \"period\": \"last_24_hours\"\n  },\n  \"output_payload\": {\n    \"date\": $('Build Metrics Object').item.json.date,\n    \"metrics\": $('Build Metrics Object').item.json.metrics,\n    \"document_url\": $('Create Report').item.json.documentUrl || $('Create Report').item.json.url || $('Create Report').item.json.webViewLink || null\n  },\n  \"status\": \"success\"\n} }}"
+      },
+      "id": "report-daily-audit-log",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## REPORT__DailySummary\nDaily 8:00 AM executive operations report.\n\n- Aggregates email, task, AI usage, error, and approval metrics\n- Generates executive summary via UTIL__AICall\n- Creates a Google Doc report\n- Notifies #executive-updates\n- Writes an audit log entry",
+        "height": 360,
+        "width": 2280,
+        "color": 6
+      },
+      "id": "report-daily-note",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Emails Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emails Processed": {
+      "main": [
+        [
+          {
+            "node": "Tasks Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tasks Metrics": {
+      "main": [
+        [
+          {
+            "node": "AI Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Usage": {
+      "main": [
+        [
+          {
+            "node": "Errors Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Errors Count": {
+      "main": [
+        [
+          {
+            "node": "Approvals Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approvals Status": {
+      "main": [
+        [
+          {
+            "node": "Build Metrics Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Metrics Object": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Summary": {
+      "main": [
+        [
+          {
+            "node": "Create Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Report": {
+      "main": [
+        [
+          {
+            "node": "Notify Executives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Executives": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "ERROR__GlobalHandler",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "00000000-0000-0000-0000-000000000017",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "",
+  "tags": []
+}

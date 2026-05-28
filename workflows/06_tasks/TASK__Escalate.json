@@ -1,0 +1,402 @@
+{
+  "name": "TASK__Escalate",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "custom",
+              "cronExpression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "task-escalate-cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT t.*, u.name as assignee_name, u.email as assignee_email,\n       m.slack_user_id as manager_slack_id, m.name as manager_name\nFROM tasks t\nLEFT JOIN users u ON t.assigned_to = u.id\nLEFT JOIN users m ON u.manager_id = m.id\nWHERE t.status = 'open'\nAND t.deadline < NOW() - INTERVAL '24 hours'\nAND t.escalated_at IS NULL"
+      },
+      "id": "task-escalate-query-overdue-unescalated",
+      "name": "Query Overdue Unescalated",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "query-returned-task-row",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "task-escalate-any-tasks",
+      "name": "Any Tasks to Escalate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = Date.now();\n\nreturn $input.all()\n  .filter(item => item.json && item.json.id)\n  .map(item => {\n    const task = item.json;\n    const deadlineTime = task.deadline ? new Date(task.deadline).getTime() : now;\n    const hoursOverdue = Math.max(0, Math.floor((now - deadlineTime) / (1000 * 60 * 60)));\n    const assigneeName = task.assignee_name || task.assignee_email || 'Unassigned';\n    const deadline = task.deadline || 'No deadline';\n\n    return {\n      json: {\n        ...task,\n        hours_overdue: hoursOverdue,\n        manager_message: `🚨 *Task Escalation*\\n*Task:* ${task.title || 'Untitled task'}\\n*Assigned to:* ${assigneeName}\\n*Deadline:* ${deadline} (overdue by ${hoursOverdue} hours)\\n*Priority:* Upgraded to CRITICAL`,\n        ops_message: `🚨 *Task Escalated*\\n*Task:* ${task.title || 'Untitled task'}\\n*Assigned to:* ${assigneeName}\\n*Manager:* ${task.manager_name || 'No manager on file'}\\n*Deadline:* ${deadline}\\n*Overdue:* ${hoursOverdue} hours\\n*Priority:* Upgraded to CRITICAL`\n      }\n    };\n  });"
+      },
+      "id": "task-escalate-prepare-details",
+      "name": "Prepare Escalation Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "task-escalate-loop",
+      "name": "Escalate Each",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "tasks",
+        "updateKey": "id",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id",
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": "escalated_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "priority",
+              "fieldValue": "critical"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "task-escalate-mark-escalated",
+      "name": "Mark Escalated",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "manager-slack-exists",
+              "leftValue": "={{ $('Escalate Each').item.json.manager_slack_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "task-escalate-manager-has-slack",
+      "name": "Manager Has Slack?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__SendSlackMessage",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"channel\": `@${$('Escalate Each').item.json.manager_slack_id}`,\n  \"message\": $('Escalate Each').item.json.manager_message\n} }}"
+      },
+      "id": "task-escalate-notify-manager",
+      "name": "Notify Manager",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__SendSlackMessage",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"channel\": \"#ops-alerts\",\n  \"message\": $('Escalate Each').item.json.ops_message\n} }}"
+      },
+      "id": "task-escalate-alert-ops",
+      "name": "Alert Ops Channel",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let prepared = [];\ntry {\n  prepared = $('Prepare Escalation Details').all().map(item => item.json).filter(task => task && task.id);\n} catch (e) {\n  prepared = [];\n}\n\nreturn [{\n  json: {\n    audit_payload: {\n      escalated_count: prepared.length,\n      task_ids: prepared.map(task => task.id),\n      manager_notifications: prepared.filter(task => task.manager_slack_id).length,\n      ops_alerts: prepared.length\n    }\n  }\n}];"
+      },
+      "id": "task-escalate-build-audit-payload",
+      "name": "Build Audit Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"workflow_name\": \"TASK__Escalate\",\n  \"execution_id\": $execution.id,\n  \"log_type\": \"action\",\n  \"action\": \"tasks_escalated\",\n  \"input_payload\": {\n    \"schedule\": \"0 * * * *\",\n    \"overdue_threshold_hours\": 24\n  },\n  \"output_payload\": $json.audit_payload,\n  \"status\": \"success\"\n} }}"
+      },
+      "id": "task-escalate-audit-log",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## TASK__Escalate\nHourly escalation workflow.\n\n- Finds open tasks overdue by more than 24 hours\n- Marks each task escalated and upgrades priority to critical\n- Notifies the assignee's manager when manager_slack_id exists\n- Alerts #ops-alerts for every escalation\n- Writes one audit log entry per run",
+        "height": 420,
+        "width": 2120,
+        "color": 4
+      },
+      "id": "task-escalate-note",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -380
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Query Overdue Unescalated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Overdue Unescalated": {
+      "main": [
+        [
+          {
+            "node": "Any Tasks to Escalate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Tasks to Escalate?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Escalation Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Audit Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Escalation Details": {
+      "main": [
+        [
+          {
+            "node": "Escalate Each",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate Each": {
+      "main": [
+        [
+          {
+            "node": "Mark Escalated",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Audit Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Escalated": {
+      "main": [
+        [
+          {
+            "node": "Manager Has Slack?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager Has Slack?": {
+      "main": [
+        [
+          {
+            "node": "Notify Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert Ops Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Manager": {
+      "main": [
+        [
+          {
+            "node": "Alert Ops Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Ops Channel": {
+      "main": [
+        [
+          {
+            "node": "Escalate Each",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Audit Payload": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "ERROR__GlobalHandler",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "00000000-0000-0000-0000-000000000016",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "",
+  "tags": []
+}

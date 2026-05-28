@@ -1,0 +1,309 @@
+{
+  "name": "TASK__SendReminders",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "custom",
+              "cronExpression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "task-reminders-cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT t.*, u.name, u.email, u.slack_user_id\nFROM tasks t\nLEFT JOIN users u ON t.assigned_to = u.id\nWHERE t.status = 'open'\nAND t.deadline IS NOT NULL\nAND t.deadline BETWEEN NOW() AND NOW() + INTERVAL '48 hours'\nORDER BY t.deadline ASC"
+      },
+      "id": "task-reminders-query-upcoming",
+      "name": "Query Upcoming Tasks",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        220,
+        -80
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT t.*, u.name, u.email, u.slack_user_id\nFROM tasks t\nLEFT JOIN users u ON t.assigned_to = u.id\nWHERE t.status = 'open'\nAND t.deadline IS NOT NULL\nAND t.deadline < NOW()\nORDER BY t.deadline ASC"
+      },
+      "id": "task-reminders-query-overdue",
+      "name": "Query Overdue Tasks",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        220,
+        120
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "task-reminders-merge-queries",
+      "name": "Merge Query Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const upcomingItems = $('Query Upcoming Tasks').all().map(item => item.json).filter(task => task && task.id);\nconst overdueItems = $('Query Overdue Tasks').all().map(item => item.json).filter(task => task && task.id);\n\nconst groups = new Map();\n\nfunction getGroup(task) {\n  const slackUserId = task.slack_user_id;\n  if (!slackUserId) return null;\n\n  if (!groups.has(slackUserId)) {\n    groups.set(slackUserId, {\n      slack_user_id: slackUserId,\n      assignee_name: task.name || task.email || 'there',\n      email: task.email || null,\n      overdue: [],\n      upcoming: []\n    });\n  }\n\n  return groups.get(slackUserId);\n}\n\nfunction formatDate(value) {\n  if (!value) return 'No deadline';\n  const date = new Date(value);\n  if (Number.isNaN(date.getTime())) return value;\n  return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';\n}\n\nfunction formatTask(task) {\n  const priority = task.priority ? task.priority.toUpperCase() : 'MEDIUM';\n  const title = task.title || 'Untitled task';\n  return `• [${priority}] ${title} — due ${formatDate(task.deadline)}`;\n}\n\nfor (const task of overdueItems) {\n  const group = getGroup(task);\n  if (group) group.overdue.push(task);\n}\n\nfor (const task of upcomingItems) {\n  const group = getGroup(task);\n  if (group) group.upcoming.push(task);\n}\n\nconst reminderGroups = [...groups.values()].map(group => {\n  const overdueList = group.overdue.length > 0\n    ? group.overdue.map(formatTask).join('\\n')\n    : '_No overdue tasks_';\n  const upcomingList = group.upcoming.length > 0\n    ? group.upcoming.map(formatTask).join('\\n')\n    : '_No upcoming tasks due in the next 48 hours_';\n\n  return {\n    json: {\n      slack_user_id: group.slack_user_id,\n      assignee_name: group.assignee_name,\n      email: group.email,\n      overdue_count: group.overdue.length,\n      upcoming_count: group.upcoming.length,\n      overdue_list: overdueList,\n      upcoming_list: upcomingList,\n      message: `⏰ *Daily Task Reminder*\\n\\n*Overdue (${group.overdue.length}):*\\n${overdueList}\\n\\n*Upcoming (${group.upcoming.length}):*\\n${upcomingList}`\n    }\n  };\n});\n\nif (reminderGroups.length === 0) {\n  return [{\n    json: {\n      no_reminders: true,\n      overdue_count: overdueItems.length,\n      upcoming_count: upcomingItems.length,\n      skipped_without_slack: [...overdueItems, ...upcomingItems].filter(task => !task.slack_user_id).length\n    }\n  }];\n}\n\nreturn reminderGroups;"
+      },
+      "id": "task-reminders-group-by-assignee",
+      "name": "Group by Assignee",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-reminder-groups",
+              "leftValue": "={{ $json.no_reminders }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "task-reminders-has-groups",
+      "name": "Has Reminder Groups?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "task-reminders-send-loop",
+      "name": "Send Reminders",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__SendSlackMessage",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"channel\": `@${$json.slack_user_id}`,\n  \"message\": $json.message\n} }}"
+      },
+      "id": "task-reminders-send-reminder",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"workflow_name\": \"TASK__SendReminders\",\n  \"execution_id\": $execution.id,\n  \"log_type\": \"action\",\n  \"action\": \"task_reminders_sent\",\n  \"input_payload\": {\n    \"schedule\": \"0 9 * * *\",\n    \"window_hours\": 48\n  },\n  \"output_payload\": {\n    \"assignee_groups\": $('Group by Assignee').all().filter(item => !item.json.no_reminders).length,\n    \"overdue_count\": $('Group by Assignee').all().reduce((sum, item) => sum + (item.json.overdue_count || 0), 0),\n    \"upcoming_count\": $('Group by Assignee').all().reduce((sum, item) => sum + (item.json.upcoming_count || 0), 0),\n    \"skipped_without_slack\": $('Group by Assignee').first().json.no_reminders ? $('Group by Assignee').first().json.skipped_without_slack : 0\n  },\n  \"status\": \"success\"\n} }}"
+      },
+      "id": "task-reminders-audit-log",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## TASK__SendReminders\nDaily 9:00 AM task reminder workflow.\n\n- Queries upcoming tasks due within 48 hours\n- Queries overdue open tasks\n- Groups reminders by users.slack_user_id\n- Sends Slack DMs via UTIL__SendSlackMessage\n- Writes an audit log entry",
+        "height": 380,
+        "width": 1640,
+        "color": 4
+      },
+      "id": "task-reminders-note",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Query Upcoming Tasks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query Overdue Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Upcoming Tasks": {
+      "main": [
+        [
+          {
+            "node": "Merge Query Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Overdue Tasks": {
+      "main": [
+        [
+          {
+            "node": "Merge Query Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Query Results": {
+      "main": [
+        [
+          {
+            "node": "Group by Assignee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group by Assignee": {
+      "main": [
+        [
+          {
+            "node": "Has Reminder Groups?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Reminder Groups?": {
+      "main": [
+        [
+          {
+            "node": "Send Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminders": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder": {
+      "main": [
+        [
+          {
+            "node": "Send Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "ERROR__GlobalHandler",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "00000000-0000-0000-0000-000000000015",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "",
+  "tags": []
+}

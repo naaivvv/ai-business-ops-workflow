@@ -1,0 +1,322 @@
+{
+  "name": "KB__SemanticSearch",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api/knowledge/search",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "kb-semantic-search-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || {};\nconst query = body.query;\nif (!query) {\n  throw new Error(\"Query is required in the request body.\");\n}\nreturn {\n  query: query,\n  top_k: body.top_k || 5\n};"
+      },
+      "id": "node_1",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__AICall"
+      },
+      "id": "node_2",
+      "name": "Embed Query",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  prompt: $json.query,\n  model_preference: 'embedding'\n};"
+      },
+      "id": "node_2_prep",
+      "name": "Prepare Embed Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeDatabaseFunction",
+        "functionName": "match_documents",
+        "parametersUi": {
+          "parameterValues": [
+            {
+              "name": "query_embedding",
+              "value": "={{ $json.response }}"
+            },
+            {
+              "name": "match_threshold",
+              "value": "0.7"
+            },
+            {
+              "name": "match_count",
+              "value": "={{ $('Validate Input').item.json.top_k }}"
+            },
+            {
+              "name": "filter_collection",
+              "value": "knowledge_base"
+            }
+          ]
+        }
+      },
+      "id": "node_3",
+      "name": "Semantic Search (pgvector)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Supabase API",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all();\nlet contextStr = \"\";\nconst sources = [];\n\nresults.forEach((item, index) => {\n  const similarity = item.json.similarity || 0;\n  const chunk_text = item.json.chunk_text || '';\n  const document_id = item.json.document_id || 'unknown';\n  \n  contextStr += `Source ${index + 1} (similarity: ${similarity.toFixed(2)}):\\n${chunk_text}\\n\\n`;\n  \n  sources.push({\n    title: `Document ${document_id.substring(0,8)}`,\n    url: \"#\",\n    similarity: similarity,\n    excerpt: chunk_text.substring(0, 150) + \"...\"\n  });\n});\n\nif (contextStr === \"\") {\n  contextStr = \"No relevant documents found in the knowledge base.\";\n}\n\nreturn {\n  context: contextStr,\n  sources: sources,\n  query: $('Validate Input').item.json.query\n};"
+      },
+      "id": "node_4",
+      "name": "Format Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__AICall"
+      },
+      "id": "node_5",
+      "name": "Generate Answer",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  prompt: `Question: ${$json.query}\\n\\nContext from knowledge base:\\n${$json.context}\\n\\nAnswer the question using ONLY the provided context. If the context doesn't contain enough information to answer, say 'I don't have enough information to answer this question.' and suggest who to contact.`,\n  system_message: \"You are a knowledgeable assistant answering questions based on organizational documents. Only use information from the provided context. Cite your sources.\",\n  model_preference: \"fast\",\n  output_format: \"text\"\n};"
+      },
+      "id": "node_5_prep",
+      "name": "Prepare Answer Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const answer = $input.item.json.response;\nconst model_used = $input.item.json.model_used;\nconst formatContextNode = $('Format Context').item.json;\n\nreturn {\n  query: formatContextNode.query,\n  answer: answer,\n  sources: formatContextNode.sources,\n  model_used: model_used\n};"
+      },
+      "id": "node_6",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node_7",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog"
+      },
+      "id": "node_8",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  workflow_name: \"KB__SemanticSearch\",\n  log_type: \"action\",\n  action: \"semantic_search\",\n  input_payload: { query: $('Validate Input').item.json.query },\n  output_payload: { sources_count: $('Format Context').item.json.sources.length },\n  status: \"success\"\n};"
+      },
+      "id": "node_8_prep",
+      "name": "Prepare Audit Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Prepare Embed Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Embed Input": {
+      "main": [
+        [
+          {
+            "node": "Embed Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Query": {
+      "main": [
+        [
+          {
+            "node": "Semantic Search (pgvector)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Semantic Search (pgvector)": {
+      "main": [
+        [
+          {
+            "node": "Format Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Context": {
+      "main": [
+        [
+          {
+            "node": "Prepare Answer Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Answer Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Answer": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "errorWorkflow": "ERROR__GlobalHandler"
+  }
+}

@@ -1,0 +1,444 @@
+{
+  "name": "KB__IngestDocument",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5
+            }
+          ]
+        },
+        "event": "fileCreated",
+        "folderId": "YOUR_FOLDER_ID"
+      },
+      "id": "trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__Deduplicate"
+      },
+      "id": "node_1",
+      "name": "Deduplicate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isDuplicate }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "node_2",
+      "name": "Skip if Duplicate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $('Google Drive Trigger').item.json.id }}"
+      },
+      "id": "node_3",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 2,
+      "position": [
+        600,
+        100
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  let text = '';\n  const mimeType = item.json.mimeType || $('Google Drive Trigger').item.json.mimeType;\n  \n  if (mimeType === 'application/vnd.google-apps.document' || mimeType === 'text/plain') {\n    // Text directly from Drive\n    if (item.binary && item.binary.data) {\n       text = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n    }\n  }\n  item.json.extracted_text = text;\n  item.json.source_type = mimeType === 'application/pdf' ? 'pdf' : \n                         (mimeType === 'application/vnd.google-apps.document' ? 'google_doc' : \n                         (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'docx' : 'unknown'));\n  item.json.title = $('Google Drive Trigger').item.json.name;\n  item.json.source_file_id = $('Google Drive Trigger').item.json.id;\n  return item;\n});"
+      },
+      "id": "node_4",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst items = $input.all();\n\nreturn items.map(item => {\n  const text = item.json.extracted_text || '';\n  const hash = crypto.createHash('sha256').update(text).digest('hex');\n  item.json.content_hash = hash;\n  return item;\n});"
+      },
+      "id": "node_5",
+      "name": "Compute Content Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "documents",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "source_file_id",
+              "condition": "equals",
+              "keyValue": "={{ $json.source_file_id }}"
+            }
+          ]
+        }
+      },
+      "id": "node_6",
+      "name": "Check Existing Document",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        100
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Supabase API",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.content_hash }}",
+              "value2": "={{ $('Compute Content Hash').item.json.content_hash }}"
+            }
+          ]
+        }
+      },
+      "id": "node_7",
+      "name": "Document Changed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "embeddings_metadata",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "document_id",
+              "condition": "equals",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        }
+      },
+      "id": "node_8",
+      "name": "Delete Old Embeddings Metadata",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        100
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Supabase API",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "documents",
+        "matchColumns": [
+          "content_hash"
+        ],
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('Compute Content Hash').item.json.title }}"
+            },
+            {
+              "fieldId": "source_type",
+              "fieldValue": "={{ $('Compute Content Hash').item.json.source_type }}"
+            },
+            {
+              "fieldId": "source_url",
+              "fieldValue": "={{ $('Google Drive Trigger').item.json.webViewLink }}"
+            },
+            {
+              "fieldId": "source_file_id",
+              "fieldValue": "={{ $('Compute Content Hash').item.json.source_file_id }}"
+            },
+            {
+              "fieldId": "content_hash",
+              "fieldValue": "={{ $('Compute Content Hash').item.json.content_hash }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "processing"
+            }
+          ]
+        }
+      },
+      "id": "node_9",
+      "name": "Upsert Document",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        100
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Supabase API",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "KB__ChunkAndEmbed"
+      },
+      "id": "node_10",
+      "name": "Chunk and Embed",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "documents",
+        "updateKey": "id",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "chunk_count",
+              "fieldValue": "={{ $json.chunk_count }}"
+            },
+            {
+              "fieldId": "processed_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "node_11",
+      "name": "Mark Complete",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        100
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Supabase API",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog"
+      },
+      "id": "node_12",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Skip if Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip if Duplicate": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Compute Content Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Content Hash": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Document": {
+      "main": [
+        [
+          {
+            "node": "Document Changed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document Changed?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Delete Old Embeddings Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Old Embeddings Metadata": {
+      "main": [
+        [
+          {
+            "node": "Upsert Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Document": {
+      "main": [
+        [
+          {
+            "node": "Chunk and Embed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk and Embed": {
+      "main": [
+        [
+          {
+            "node": "Mark Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Complete": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "errorWorkflow": "ERROR__GlobalHandler"
+  }
+}
