@@ -24,10 +24,10 @@ This project runs on n8n Cloud and Supabase. Local verification can confirm expo
 ## Infrastructure
 
 - [x] n8n Cloud accessible at `https://edwin-bayog.app.n8n.cloud/` (`200 OK` from GET reachability check).
-- [ ] Supabase PostgreSQL has all seven core tables.
-- [ ] Supabase has `vector` extension enabled.
-- [ ] Supabase has `match_documents` function.
-- [ ] n8n Cloud can connect to Supabase with the configured credential.
+- [x] Supabase PostgreSQL has all seven core tables.
+- [x] Supabase has `vector` extension enabled.
+- [x] Supabase has `match_documents` function.
+- [x] n8n Cloud can connect to Supabase with the configured credential.
 
 Self-hosted checks are not applicable for the current deployment:
 

@@ -30,7 +30,7 @@
         "select": "channel",
         "channelId": {
           "__rl": true,
-          "value": "C0B68HMBT8U",
+          "value": "C0B62LSRCF8",
           "mode": "id"
         },
         "text": "=🚨 *Workflow Failed*\n*Workflow:* {{$json.workflowName}}\n*Failed Node:* {{$json.failedNode}}\n*Error:* {{$json.errorMessage}}\n*Execution:* {{$json.executionLink}}",
@@ -155,7 +155,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "71f501c3-4441-458f-9e48-b314129cffd3",
+  "versionId": "9b1a6b7e-6acb-4ce2-a45c-b08036ac585f",
   "meta": {
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },
