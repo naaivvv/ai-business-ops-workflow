@@ -9,7 +9,7 @@
       "typeVersion": 1,
       "position": [
         -144,
-        -32
+        -80
       ]
     },
     {
@@ -21,8 +21,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        64,
-        -32
+        80,
+        -80
       ]
     },
     {
@@ -41,8 +41,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        272,
-        -32
+        304,
+        -80
       ]
     },
     {
@@ -61,7 +61,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        464,
+        1424,
         -224
       ],
       "credentials": {
@@ -84,8 +84,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        464,
-        176
+        528,
+        -8
       ]
     },
     {
@@ -104,8 +104,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        672,
-        176
+        752,
+        -8
       ],
       "settings": {
         "continueOnFail": true
@@ -137,8 +137,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        864,
-        176
+        976,
+        -8
       ]
     },
     {
@@ -150,8 +150,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1072,
-        384
+        1200,
+        64
       ]
     },
     {
@@ -170,8 +170,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1264,
-        384
+        1424,
+        64
       ],
       "settings": {
         "continueOnFail": true
@@ -196,8 +196,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1472,
-        -32
+        1648,
+        -80
       ]
     },
     {
@@ -210,8 +210,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        1664,
-        -32
+        1872,
+        -80
       ]
     },
     {
@@ -223,22 +223,22 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1872,
-        -32
+        2096,
+        -80
       ]
     },
     {
       "parameters": {
-        "content": "## AI Call\n",
-        "height": 912,
-        "width": 2320,
+        "content": "## AI Call Utility Workflow\n\n**Purpose:** Centralized AI inference service with model selection, failover, and usage tracking.\n\n**Process:**\n1. **Trigger:** Called by other workflows with AI request parameters\n2. **Model Selection:** Routes to embedding or chat completion based on preference (fast/large-context/embedding)\n3. **Embedding Path:** Generates embeddings via Hugging Face API\n4. **Chat Path:** Sends request to primary model (OpenRouter), falls back to secondary if primary fails\n5. **Usage Tracking:** Calculates tokens, latency, cost and logs to central analytics workflow\n6. **Response:** Returns AI output with metadata (model used, tokens, latency, cost)\n\n**Input:** `{ prompt, model_preference?, system_message?, max_tokens?, output_format? }`\n**Output:** `{ response, model_used, tokens_input, tokens_output, latency_ms, cost_usd }`",
+        "height": 624,
+        "width": 2560,
         "color": 6
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -208,
-        -320
+        -248,
+        -384
       ],
       "id": "4eb67b13-2403-4c36-9a21-0eb9ec96809b",
       "name": "Sticky Note1"
@@ -391,7 +391,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "027efee6-d4c7-46e8-939f-06015790154a",
+  "versionId": "5af5b778-c9f5-4b60-9505-9e24892b7fc6",
   "meta": {
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },

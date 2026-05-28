@@ -1,0 +1,485 @@
+{
+  "name": "EMAIL__ApproveAndSend",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "api/email/approve-send",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "eas-webhook-approve-send",
+      "name": "Approval Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        0
+      ],
+      "webhookId": "email-approve-and-send"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json || {};\nconst body = input.body || {};\nconst query = input.query || {};\nconst params = { ...body, ...query };\n\nconst decisionRaw = String(params.decision || params.action || '').trim().toLowerCase();\nconst approved = ['approve', 'approved', 'send', 'yes'].includes(decisionRaw);\nconst rejected = ['reject', 'rejected', 'deny', 'no'].includes(decisionRaw);\n\nif (!approved && !rejected) {\n  throw new Error('decision is required and must be approve or reject');\n}\n\nconst approvalId = params.approval_id || params.approvalId || null;\nconst token = params.token || params.approval_token || null;\n\nif (!approvalId) {\n  throw new Error('approval_id is required');\n}\nif (!token) {\n  throw new Error('approval token is required');\n}\n\nreturn [{\n  json: {\n    decision: approved ? 'approved' : 'rejected',\n    approved,\n    rejected,\n    approval_id: approvalId,\n    token,\n    reviewer: params.reviewer || params.approver || 'slack_button',\n    notes: params.notes || params.reason || '',\n    decided_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "eas-validate-request",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "approvals",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "string",
+        "filterString": "id=eq.{{ $json.approval_id }}"
+      },
+      "id": "eas-load-approval",
+      "name": "Load Approval",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Validate Request').first().json;\nconst approval = $input.first().json || {};\n\nif (!approval.id) {\n  throw new Error('approval not found');\n}\n\nlet payload = approval.request_payload || {};\nif (typeof payload === 'string') {\n  try {\n    payload = JSON.parse(payload);\n  } catch (e) {\n    throw new Error('approval request_payload is not valid JSON');\n  }\n}\n\nconst expectedToken = payload.approval_token || payload.token;\nif (!expectedToken || expectedToken !== request.token) {\n  throw new Error('invalid approval token');\n}\n\nif (approval.status && approval.status !== 'pending') {\n  throw new Error(`approval is already ${approval.status}`);\n}\n\nif (approval.expires_at && new Date(approval.expires_at).getTime() < Date.now()) {\n  throw new Error('approval has expired');\n}\n\nconst draftId = payload.draft_id || payload.draftId || payload.gmail_draft_id;\nif (request.approved && !draftId) {\n  throw new Error('approval payload is missing draft_id');\n}\n\nreturn [{\n  json: {\n    ...request,\n    draft_id: draftId || null,\n    event_id: payload.event_id || null,\n    recipient: payload.to || payload.recipient || '',\n    subject: payload.subject || '',\n    thread_id: payload.thread_id || payload.threadId || null,\n    draft_preview: payload.draft_preview || '',\n    approval_payload: payload\n  }\n}];"
+      },
+      "id": "eas-validate-token",
+      "name": "Validate Approval Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "decision-approved",
+              "leftValue": "={{ $json.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "eas-approved-if",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -16,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "send",
+        "draftId": "={{ $json.draft_id }}"
+      },
+      "id": "eas-send-draft",
+      "name": "Send Gmail Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        -112
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const decision = $('Validate Approval Token').first().json;\nconst sent = $input.first().json || {};\n\nreturn [{\n  json: {\n    ...decision,\n    sent_message_id: sent.id || sent.messageId || null,\n    gmail_result: sent,\n    final_status: 'sent'\n  }\n}];"
+      },
+      "id": "eas-build-approved-result",
+      "name": "Build Approved Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const decision = $('Validate Approval Token').first().json;\n\nreturn [{\n  json: {\n    ...decision,\n    sent_message_id: null,\n    gmail_result: null,\n    final_status: 'rejected'\n  }\n}];"
+      },
+      "id": "eas-build-rejected-result",
+      "name": "Build Rejected Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "approvals",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id",
+              "fieldValue": "={{ $json.approval_id }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.approved ? 'approved' : 'rejected' }}"
+            },
+            {
+              "fieldId": "decision_notes",
+              "fieldValue": "={{ $json.notes }}"
+            },
+            {
+              "fieldId": "approved_at",
+              "fieldValue": "={{ $json.approved ? $json.decided_at : null }}"
+            },
+            {
+              "fieldId": "rejected_at",
+              "fieldValue": "={{ $json.rejected ? $json.decided_at : null }}"
+            }
+          ]
+        }
+      },
+      "id": "eas-update-approval",
+      "name": "Update Approval",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        656,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let result;\ntry {\n  result = $('Build Approved Result').first().json;\n} catch (e) {\n  result = $('Build Rejected Result').first().json;\n}\n\nconst statusLine = result.approved\n  ? `Approved by ${result.reviewer}. Gmail draft was sent.`\n  : `Rejected by ${result.reviewer}. Gmail draft was not sent.`;\n\nreturn [{\n  json: {\n    ...result,\n    channel: '#email-routing',\n    message: `*Email Approval Decision*\\n*Status:* ${result.final_status}\\n*Subject:* ${result.subject || '(not provided)'}\\n*To:* ${result.recipient || '(not provided)'}\\n*Draft ID:* ${result.draft_id || '(none)'}\\n*Reviewer:* ${result.reviewer}\\n*Notes:* ${result.notes || '(none)'}\\n${statusLine}`\n  }\n}];"
+      },
+      "id": "eas-prepare-slack",
+      "name": "Prepare Slack Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "nERkPtt59rc5Gfbm",
+        "mode": "each",
+        "options": {}
+      },
+      "id": "eas-send-slack",
+      "name": "Notify Email Channel",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $('Prepare Slack Notification').first().json;\n\nreturn [{\n  json: {\n    workflow_name: 'EMAIL__ApproveAndSend',\n    execution_id: $execution.id,\n    log_type: 'action',\n    action: result.approved ? 'draft_approved_and_sent' : 'draft_rejected',\n    input_payload: {\n      approval_id: result.approval_id,\n      event_id: result.event_id,\n      draft_id: result.draft_id,\n      subject: result.subject,\n      recipient: result.recipient,\n      reviewer: result.reviewer,\n      notes: result.notes\n    },\n    output_payload: {\n      final_status: result.final_status,\n      sent_message_id: result.sent_message_id\n    },\n    status: 'success'\n  }\n}];"
+      },
+      "id": "eas-prepare-audit",
+      "name": "Prepare Audit Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "jCqmfSwQOsGcrJDa",
+        "mode": "each",
+        "options": {}
+      },
+      "id": "eas-audit-log",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $('Prepare Slack Notification').first().json;\nconst title = result.approved ? 'Email draft sent' : 'Email draft rejected';\nconst detail = result.approved\n  ? 'The approved Gmail draft has been sent.'\n  : 'The Gmail draft was rejected and was not sent.';\n\nreturn [{\n  json: {\n    success: true,\n    title,\n    detail,\n    workflow: 'EMAIL__ApproveAndSend',\n    decision: result.decision,\n    final_status: result.final_status,\n    approval_id: result.approval_id,\n    event_id: result.event_id,\n    draft_id: result.draft_id,\n    sent_message_id: result.sent_message_id,\n    reviewer: result.reviewer,\n    decided_at: result.decided_at\n  }\n}];"
+      },
+      "id": "eas-build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html><head><title>{{$json.title}}</title><style>body{font-family:Arial,sans-serif;max-width:680px;margin:64px auto;padding:0 24px;line-height:1.5;color:#17202a}code{background:#f2f4f7;padding:2px 5px;border-radius:4px}.status{border:1px solid #d0d7de;border-radius:8px;padding:20px}</style></head><body><div class=\"status\"><h1>{{$json.title}}</h1><p>{{$json.detail}}</p><p><strong>Decision:</strong> <code>{{$json.decision}}</code></p><p><strong>Approval ID:</strong> <code>{{$json.approval_id}}</code></p><p><strong>Draft ID:</strong> <code>{{$json.draft_id}}</code></p></div></body></html>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "eas-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## EMAIL__ApproveAndSend\\n\\nClick endpoint for Slack approval buttons.\\n\\nGET /api/email/approve-send\\n\\nRequired query fields:\\n- decision=approve or reject\\n- approval_id=<approvals.id>\\n- token=<request_payload.approval_token>\\n\\nThe token is generated by EMAIL__GenerateDraft and stored in approvals.request_payload. Approved requests send the Gmail draft. Rejected requests only update approvals and audit logs.",
+        "height": 560,
+        "width": 3012,
+        "color": 5
+      },
+      "id": "eas-notes",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        -288
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Approval Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Load Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Approval": {
+      "main": [
+        [
+          {
+            "node": "Validate Approval Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Approval Token": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Rejected Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail Draft": {
+      "main": [
+        [
+          {
+            "node": "Build Approved Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approved Result": {
+      "main": [
+        [
+          {
+            "node": "Update Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Rejected Result": {
+      "main": [
+        [
+          {
+            "node": "Update Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Approval": {
+      "main": [
+        [
+          {
+            "node": "Prepare Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Slack Notification": {
+      "main": [
+        [
+          {
+            "node": "Notify Email Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Email Channel": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "b7d4c5c7-6d59-4e0f-9f64-0f7207079c91",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "tags": []
+}

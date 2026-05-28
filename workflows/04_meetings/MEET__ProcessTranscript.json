@@ -50,7 +50,7 @@
       "name": "Skip if Duplicate",
       "type": "n8n-nodes-base.if",
       "position": [
-        3088,
+        3136,
         512
       ],
       "typeVersion": 1,
@@ -65,8 +65,8 @@
       "name": "Download File",
       "type": "n8n-nodes-base.googleDrive",
       "position": [
-        3264,
-        720
+        3360,
+        512
       ],
       "typeVersion": 2,
       "id": "219c60ea-b406-4180-bc4c-880e4c8bbd79",
@@ -84,8 +84,8 @@
       "name": "Extract Text",
       "type": "n8n-nodes-base.code",
       "position": [
-        3456,
-        720
+        3584,
+        512
       ],
       "typeVersion": 2,
       "id": "9812d04f-1ce5-43f7-919e-f68829388230"
@@ -99,8 +99,8 @@
       "name": "Summarize",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        3664,
-        720
+        3808,
+        512
       ],
       "typeVersion": 1,
       "id": "58bb1777-ebda-4ea3-974a-a7199bfb73d9"
@@ -114,8 +114,8 @@
       "name": "Extract Actions",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        3856,
-        720
+        4032,
+        512
       ],
       "typeVersion": 1,
       "id": "89fa4564-7f01-4e31-b414-238cbf83bdf5"
@@ -129,8 +129,8 @@
       "name": "Create Summary Doc",
       "type": "n8n-nodes-base.googleDocs",
       "position": [
-        4064,
-        720
+        4256,
+        512
       ],
       "typeVersion": 1,
       "id": "bd66dfa4-f391-4395-b747-0c4f3681c15d",
@@ -150,24 +150,24 @@
       "name": "Notify Team",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        4256,
-        720
+        4480,
+        512
       ],
       "typeVersion": 1,
       "id": "ff6dbf7e-697e-4429-b167-79ac833bab4c"
     },
     {
       "parameters": {
-        "content": "## Process Transcript\n",
-        "height": 464,
-        "width": 2032,
-        "color": "#D1D4FF"
+        "content": "## Process Transcript\n\nAutomatically processes meeting transcripts uploaded to Google Drive:\n\n1. **Monitor** - Watches specific folder for new transcript files (.txt, .docx, .vtt, .srt)\n2. **Deduplicate** - Checks if file has already been processed\n3. **Download** - Retrieves file content from Google Drive\n4. **Extract** - Parses text and removes timestamps from subtitle formats\n5. **Summarize** - Generates meeting summary using AI\n6. **Extract Actions** - Identifies action items and decisions\n7. **Create Doc** - Saves formatted summary to Google Docs\n8. **Notify** - Alerts team members of new summary\n9. **Audit** - Logs processing activity for compliance",
+        "height": 560,
+        "width": 2288,
+        "color": 2
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2640,
-        448
+        2608,
+        128
       ],
       "id": "d392218d-d9af-44c6-85c4-85325dae8307",
       "name": "Sticky Note5"
@@ -181,7 +181,7 @@
       "name": "Deduplicate",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        2896,
+        2912,
         512
       ],
       "typeVersion": 1,
@@ -196,8 +196,8 @@
       "name": "Audit Log",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        4464,
-        720
+        4704,
+        512
       ],
       "typeVersion": 1,
       "id": "d5f5a992-78b1-46cc-9ee3-5ed0dd38059c"
@@ -315,7 +315,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "aa805c37-eabd-4c4a-805d-c20b4a8e4e5c",
+  "versionId": "79c50dea-a52c-431c-b649-0b50e7a87735",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

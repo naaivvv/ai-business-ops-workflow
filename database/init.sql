@@ -1,4 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -109,7 +110,7 @@ CREATE TABLE IF NOT EXISTS documents (
     source_file_id TEXT,
     content_hash TEXT NOT NULL,
     chunk_count INTEGER DEFAULT 0,
-    embedding_model TEXT DEFAULT 'text-embedding-3-small',
+    embedding_model TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     collection_name TEXT DEFAULT 'knowledge_base',
     status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
@@ -127,11 +128,40 @@ CREATE TABLE IF NOT EXISTS embeddings_metadata (
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     chunk_index INTEGER NOT NULL,
     chunk_text TEXT NOT NULL,
-    vector_id TEXT NOT NULL,
+    embedding vector(384),
     collection_name TEXT NOT NULL DEFAULT 'knowledge_base',
-    embedding_model TEXT NOT NULL DEFAULT 'text-embedding-3-small',
+    embedding_model TEXT NOT NULL DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_embeddings_document ON embeddings_metadata(document_id);
-CREATE INDEX IF NOT EXISTS idx_embeddings_vector ON embeddings_metadata(vector_id);
+CREATE INDEX IF NOT EXISTS idx_embeddings_vector ON embeddings_metadata USING hnsw (embedding vector_cosine_ops);
+
+CREATE OR REPLACE FUNCTION match_documents (
+  query_embedding vector(384),
+  match_threshold float,
+  match_count int,
+  filter_collection text DEFAULT 'knowledge_base'
+)
+RETURNS TABLE (
+  id uuid,
+  document_id uuid,
+  chunk_text text,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    embeddings_metadata.id,
+    embeddings_metadata.document_id,
+    embeddings_metadata.chunk_text,
+    1 - (embeddings_metadata.embedding <=> query_embedding) AS similarity
+  FROM embeddings_metadata
+  WHERE 1 - (embeddings_metadata.embedding <=> query_embedding) > match_threshold
+    AND embeddings_metadata.collection_name = filter_collection
+  ORDER BY embeddings_metadata.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;

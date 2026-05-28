@@ -5,7 +5,6 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "api/knowledge/search",
-        "authentication": "headerAuth",
         "responseMode": "lastNode",
         "options": {}
       },
@@ -17,14 +16,7 @@
         0,
         0
       ],
-      "webhookId": "kb-semantic-search-webhook"
-      ,
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "KB_SEMANTIC_SEARCH_BEARER",
-          "name": "KB Semantic Search Bearer Token"
-        }
-      }
+      "webhookId": "8cce2829-91f5-4ef2-8c41-72a22faf26f9"
     },
     {
       "parameters": {
@@ -35,7 +27,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        208,
+        224,
         0
       ]
     },
@@ -49,7 +41,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        608,
+        672,
         0
       ]
     },
@@ -62,7 +54,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        400,
+        448,
         0
       ]
     },
@@ -75,7 +67,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        800,
+        896,
         0
       ],
       "credentials": {
@@ -94,7 +86,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1008,
+        1120,
         0
       ]
     },
@@ -108,7 +100,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        1408,
+        1568,
         0
       ]
     },
@@ -121,7 +113,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1200,
+        1344,
         0
       ]
     },
@@ -134,7 +126,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1600,
+        1792,
         0
       ]
     },
@@ -151,7 +143,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        1808,
+        2016,
         0
       ]
     },
@@ -165,7 +157,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        2224,
+        2464,
         0
       ]
     },
@@ -178,22 +170,22 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2016,
+        2240,
         0
       ]
     },
     {
       "parameters": {
-        "content": "## Semantic Search\n",
-        "height": 272,
-        "width": 2480,
+        "content": "## Semantic Search\n\n**Purpose:** Provides semantic search over knowledge base documents using vector embeddings and generates AI-powered answers.\n\n**Process:**\n1. Receives search query via webhook\n2. Validates input and extracts query parameters\n3. Embeds query using AI model\n4. Performs semantic search in pgvector database\n5. Formats retrieved context with similarity scores\n6. Generates answer using AI with context\n7. Returns structured response with sources\n8. Logs search action to audit trail\n\n**Key Features:**\n- Vector similarity search for relevant documents\n- Context-aware AI responses\n- Source attribution and similarity scoring\n- Configurable top_k results\n- Full audit logging",
+        "height": 688,
+        "width": 2720,
         "color": 3
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -48,
-        -80
+        -24,
+        -480
       ],
       "id": "43d03b07-51ce-43c6-819a-52d4d5a7f569",
       "name": "Sticky Note1"
@@ -332,7 +324,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "80dd449d-1178-41a9-81d6-bcb8759d699c",
+  "versionId": "94ee41fc-22cd-45f9-b0e5-a0fab7acaea7",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

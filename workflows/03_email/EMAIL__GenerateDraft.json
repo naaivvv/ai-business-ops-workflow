@@ -3,97 +3,209 @@
   "nodes": [
     {
       "parameters": {},
+      "id": "de9bef3d-38c8-4c70-986d-35b853975e08",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "position": [
-        0,
-        0
-      ],
       "typeVersion": 1,
-      "id": "execute-workflow-trigger"
+      "position": [
+        336,
+        80
+      ]
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  let body = item.json.email_body || '';\n  \n  let newBody = body\n    .replace(/\\b\\d{3}-\\d{2}-\\d{4}\\b/g, '[REDACTED]')\n    .replace(/\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b/g, '[REDACTED]')\n    .replace(/\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b/g, '[REDACTED]');\n  \n  item.json.hasPII = (newBody !== body);\n  item.json.sanitized_body = newBody;\n}\nreturn $input.all();"
+        "jsCode": "for (const item of $input.all()) {\n  const body = item.json.email_body || '';\n  const newBody = body\n    .replace(/\\b\\d{3}-\\d{2}-\\d{4}\\b/g, '[REDACTED]')\n    .replace(/\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b/g, '[REDACTED]')\n    .replace(/\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b/g, '[REDACTED]');\n\n  item.json.hasPII = newBody !== body;\n  item.json.sanitized_body = newBody;\n}\n\nreturn $input.all();"
       },
+      "id": "c58e93a9-943f-4952-b494-06ffc5a86e5e",
       "name": "PII Check",
       "type": "n8n-nodes-base.code",
-      "position": [
-        220,
-        0
-      ],
       "typeVersion": 2,
-      "id": "pii-check"
+      "position": [
+        560,
+        80
+      ]
     },
     {
       "parameters": {
-        "workflowId": "UTIL__AICall",
+        "workflowId": "n8dUKBJ3yMSedWTk",
         "mode": "each",
-        "workflowInputs": "={{ {\n  \"prompt\": `Generate a professional reply draft for this email.\\n\\nOriginal Email:\\nFrom: ${$json.sender}\\nSubject: ${$json.email_subject}\\nBody: ${$json.sanitized_body}\\n\\nClassification: ${$json.classification?.category || ''}, Urgency: ${$json.classification?.urgency || ''}\\n\\nWrite a helpful, professional reply. Keep it concise. Do not include any sensitive personal information.`,\n  \"system_message\": \"You are a professional email assistant. Write clear, helpful email replies that match the business tone. Always be polite and solution-oriented. Never include information you don't have — if unsure, suggest the person contact the relevant department.\",\n  \"model_preference\": \"fast\",\n  \"output_format\": \"text\"\n} }}"
+        "options": {}
       },
+      "id": "29c7710a-9a6c-46d5-b84f-4b3a620498d7",
       "name": "Generate Reply",
       "type": "n8n-nodes-base.executeWorkflow",
-      "position": [
-        440,
-        0
-      ],
       "typeVersion": 1,
-      "id": "generate-reply"
+      "position": [
+        784,
+        80
+      ]
     },
     {
       "parameters": {
         "resource": "draft",
-        "operation": "create",
         "subject": "=Re: {{ $('Execute Workflow Trigger').item.json.email_subject.replace(/^Re:\\s*/i, '') }}",
         "message": "={{ $json.response }}",
-        "toList": "={{ $('Execute Workflow Trigger').item.json.sender }}"
+        "options": {}
       },
+      "id": "a4f64f93-673d-4189-9b56-b6a3dca3daf1",
       "name": "Create Draft",
       "type": "n8n-nodes-base.gmail",
-      "position": [
-        660,
-        0
-      ],
       "typeVersion": 2.1,
+      "position": [
+        1008,
+        80
+      ],
+      "webhookId": "e0d6b502-7e02-42ff-9bbb-b128412e4c9c",
       "credentials": {
         "gmailOAuth2": {
-          "id": "Google Business Ops",
-          "name": "Google Business Ops"
+          "id": "vsyBDhf8udtZ96ed",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst input = $('Execute Workflow Trigger').first().json;\nconst draft = $('Create Draft').first().json || {};\nconst generated = $('Generate Reply').first().json || {};\n\nconst token = crypto.randomBytes(32).toString('hex');\nconst draftId = draft.id || draft.draftId || draft.draft_id || draft.message?.id || draft.messageId || null;\nconst subject = `Re: ${(input.email_subject || '').replace(/^Re:\\s*/i, '')}`;\nconst draftText = generated.response || generated.text || '';\nconst now = new Date();\nconst expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();\n\nif (!draftId) {\n  throw new Error('Gmail draft was created but no draft id was returned');\n}\n\nreturn [{\n  json: {\n    request_type: 'email_draft_send',\n    source_workflow: 'EMAIL__GenerateDraft',\n    status: 'pending',\n    expires_at: expiresAt,\n    draft_id: draftId,\n    event_id: input.event_id || null,\n    recipient: input.sender,\n    subject,\n    thread_id: input.threadId || null,\n    message_id: input.messageId || null,\n    classification: input.classification || {},\n    approval_token: token,\n    draft_preview: draftText.substring(0, 600),\n    request_payload: {\n      approval_token: token,\n      draft_id: draftId,\n      event_id: input.event_id || null,\n      to: input.sender,\n      subject,\n      thread_id: input.threadId || null,\n      message_id: input.messageId || null,\n      classification: input.classification || {},\n      draft_preview: draftText.substring(0, 600),\n      created_at: now.toISOString()\n    }\n  }\n}];"
+      },
+      "id": "12beb759-2e06-41fe-9846-3351a8d02a08",
+      "name": "Prepare Approval Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "approvals",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "request_type",
+              "fieldValue": "={{ $json.request_type }}"
+            },
+            {
+              "fieldId": "source_workflow",
+              "fieldValue": "={{ $json.source_workflow }}"
+            },
+            {
+              "fieldId": "request_payload",
+              "fieldValue": "={{ JSON.stringify($json.request_payload) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "pending"
+            },
+            {
+              "fieldId": "expires_at",
+              "fieldValue": "={{ $json.expires_at }}"
+            }
+          ]
         }
       },
-      "id": "create-draft"
+      "id": "cffbdb35-d995-4ebc-b2f5-05ed2c7baef8",
+      "name": "Create Approval Request",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        80
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
-        "workflowId": "UTIL__SendSlackMessage",
-        "mode": "each",
-        "workflowInputs": "={{ {\n  \"channel\": \"#email-routing\",\n  \"message\": `📝 *AI Draft Ready for Review*\\n*To:* ${$('Execute Workflow Trigger').item.json.sender}\\n*Subject:* Re: ${$('Execute Workflow Trigger').item.json.email_subject.replace(/^Re:\\s*/i, '')}\\n*Category:* ${$('Execute Workflow Trigger').item.json.classification?.category || ''}\\n\\n*Draft Preview:*\\n>>> ${$('Generate Reply').item.json.response?.substring(0, 200)}...\\n\\n✅ Review and send from your Gmail Drafts folder`\n} }}"
+        "jsCode": "const approval = $('Create Approval Request').first().json || {};\nconst prepared = $('Prepare Approval Request').first().json;\n\nconst baseUrl = 'https://edwin-bayog.app.n8n.cloud/webhook/api/email/approve-send';\nconst approvalId = approval.id;\nconst token = prepared.approval_token;\n\nif (!approvalId) {\n  throw new Error('Approval row was created but no approval id was returned');\n}\n\nconst approveUrl = `${baseUrl}?decision=approve&approval_id=${encodeURIComponent(approvalId)}&token=${encodeURIComponent(token)}`;\nconst rejectUrl = `${baseUrl}?decision=reject&approval_id=${encodeURIComponent(approvalId)}&token=${encodeURIComponent(token)}`;\n\nreturn [{\n  json: {\n    channel: '#email-routing',\n    approval_id: approvalId,\n    draft_id: prepared.draft_id,\n    approve_url: approveUrl,\n    reject_url: rejectUrl,\n    message: `*AI Draft Ready for Approval*\\n*To:* ${prepared.recipient}\\n*Subject:* ${prepared.subject}\\n*Category:* ${prepared.classification?.category || '(none)'}\\n*Urgency:* ${prepared.classification?.urgency || '(none)'}\\n*Approval expires:* ${prepared.expires_at}\\n\\n*Draft Preview:*\\n>>> ${prepared.draft_preview.substring(0, 500)}${prepared.draft_preview.length > 500 ? '...' : ''}\\n\\n<${approveUrl}|Approve and send> | <${rejectUrl}|Reject draft>`\n  }\n}];"
       },
+      "id": "abb702a2-7ce9-4b39-9f12-3d5ef6a20daf",
+      "name": "Prepare Reviewer Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "nERkPtt59rc5Gfbm",
+        "mode": "each",
+        "options": {}
+      },
+      "id": "c24c6e4f-2dc1-419b-9a01-71af7b8ff2fe",
       "name": "Notify Reviewer",
       "type": "n8n-nodes-base.executeWorkflow",
-      "position": [
-        880,
-        0
-      ],
       "typeVersion": 1,
-      "id": "notify-reviewer"
+      "position": [
+        1904,
+        80
+      ]
     },
     {
       "parameters": {
-        "workflowId": "UTIL__WriteAuditLog",
-        "mode": "each",
-        "workflowInputs": "={{ {\n  \"workflow_name\": \"EMAIL__GenerateDraft\",\n  \"log_type\": \"action\",\n  \"action\": \"draft_created\",\n  \"status\": \"success\"\n} }}"
+        "jsCode": "const prepared = $('Prepare Approval Request').first().json;\nconst notification = $('Prepare Reviewer Notification').first().json;\n\nreturn [{\n  json: {\n    workflow_name: 'EMAIL__GenerateDraft',\n    execution_id: $execution.id,\n    log_type: 'action',\n    action: 'draft_created_pending_approval',\n    input_payload: {\n      event_id: prepared.event_id,\n      recipient: prepared.recipient,\n      subject: prepared.subject,\n      classification: prepared.classification\n    },\n    output_payload: {\n      approval_id: notification.approval_id,\n      draft_id: prepared.draft_id,\n      expires_at: prepared.expires_at\n    },\n    status: 'success'\n  }\n}];"
       },
+      "id": "a9a87072-1baa-42cd-8460-0ca3ef500a68",
+      "name": "Prepare Audit Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "jCqmfSwQOsGcrJDa",
+        "mode": "each",
+        "options": {}
+      },
+      "id": "e2dd8d46-4153-41f7-9136-a497163f9e14",
       "name": "Audit Log",
       "type": "n8n-nodes-base.executeWorkflow",
-      "position": [
-        1100,
-        0
-      ],
       "typeVersion": 1,
-      "id": "audit-log"
+      "position": [
+        2352,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Approval Request').first().json;\nconst notification = $('Prepare Reviewer Notification').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    draft_id: prepared.draft_id,\n    approval_id: notification.approval_id,\n    approval_status: 'pending',\n    expires_at: prepared.expires_at,\n    approve_url: notification.approve_url,\n    reject_url: notification.reject_url\n  }\n}];"
+      },
+      "id": "ca778635-96de-4ca5-98fe-17c4a5331d9f",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2576,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## EMAIL__GenerateDraft\n\nCreates a Gmail draft and starts the approval workflow.\n\nHow to use:\n\n* Generates a Gmail draft from the provided email content\n* Creates a pending approval record in the approvals table\n* Sends Slack approve/reject links connected to EMAIL__ApproveAndSend\n* Stores the approval token in approvals.request_payload for approval handling\n\nBefore activating:\n\n* Configure Gmail OAuth2 API credential for draft creation\n* Configure Slack credential for approval notifications\n* Configure Supabase credential with access to the approvals table\n* Verify EMAIL__ApproveAndSend webhook endpoint is active and accessible\n",
+        "height": 560,
+        "width": 2512,
+        "color": 4
+      },
+      "id": "6ff9de16-3359-413f-966e-4095b9ff0c16",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -272
+      ]
     }
   ],
+  "pinData": {},
   "connections": {
     "Execute Workflow Trigger": {
       "main": [
@@ -132,6 +244,39 @@
       "main": [
         [
           {
+            "node": "Prepare Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Create Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reviewer Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reviewer Notification": {
+      "main": [
+        [
+          {
             "node": "Notify Reviewer",
             "type": "main",
             "index": 0
@@ -143,7 +288,29 @@
       "main": [
         [
           {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit Log": {
+      "main": [
+        [
+          {
             "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
             "type": "main",
             "index": 0
           }
@@ -151,8 +318,20 @@
       ]
     }
   },
+  "active": true,
   "settings": {
-    "callerPolicy": "any",
-    "errorWorkflow": "Fa1qAUIxfJj6SjfY"
-  }
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "ea6cd682-09f8-418d-b461-58319863fb86",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "zFwK1eHHECz9VrHm",
+  "tags": []
 }

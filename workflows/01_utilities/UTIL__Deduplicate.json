@@ -3,63 +3,32 @@
   "nodes": [
     {
       "parameters": {
-        "inputDataMode": "defineBelow",
-        "schema": [
-          {
-            "name": "source",
-            "type": "string",
-            "required": true
-          },
-          {
-            "name": "dedup_key",
-            "type": "string",
-            "required": true
-          },
-          {
-            "name": "event_type",
-            "type": "string",
-            "required": true
-          }
-        ]
-      },
-      "id": "c2d3e4f5-2222-4bbb-cccc-200000000001",
-      "name": "When Executed by Another Workflow",
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1.1,
-      "position": [
-        260,
-        0
-      ]
-    },
-    {
-      "parameters": {
         "jsCode": "const crypto = require('crypto');\nconst data = $input.first().json;\n\n// Validate required fields\nconst requiredFields = ['source', 'dedup_key', 'event_type'];\nconst missing = requiredFields.filter(f => !data[f]);\n\nif (missing.length > 0) {\n  throw new Error(`Missing required fields: ${missing.join(', ')}`);\n}\n\n// Validate source enum\nconst validSources = ['gmail', 'drive', 'webhook', 'form'];\nif (!validSources.includes(data.source)) {\n  throw new Error(`Invalid source: \"${data.source}\". Must be one of: ${validSources.join(', ')}`);\n}\n\n// Compute SHA-256 hash of source + \"|\" + dedup_key\nconst dedup_hash = crypto\n  .createHash('sha256')\n  .update(data.source + '|' + data.dedup_key)\n  .digest('hex');\n\nreturn [{\n  json: {\n    source: data.source,\n    dedup_key: data.dedup_key,\n    event_type: data.event_type,\n    dedup_hash: dedup_hash\n  }\n}];"
       },
-      "id": "c2d3e4f5-2222-4bbb-cccc-200000000002",
+      "id": "2ee08f27-d6b5-4fa9-bb80-340a4136e957",
       "name": "Compute Hash",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
-        0
+        -48,
+        48
       ]
     },
     {
       "parameters": {
         "operation": "getAll",
         "tableId": "events",
-        "returnAll": false,
         "limit": 1,
         "filterType": "string",
         "filterString": "dedup_hash=eq.{{ $json.dedup_hash }}"
       },
-      "id": "c2d3e4f5-2222-4bbb-cccc-200000000003",
+      "id": "7dd3e48b-948f-44b1-bc99-a4255224ca31",
       "name": "Check Existing",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        700,
-        0
+        176,
+        48
       ],
       "credentials": {
         "supabaseApi": {
@@ -75,7 +44,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -92,26 +62,26 @@
         },
         "options": {}
       },
-      "id": "c2d3e4f5-2222-4bbb-cccc-200000000004",
+      "id": "d7f48e24-add7-40b5-a4b6-c66dd6811063",
       "name": "Is Duplicate?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        920,
-        0
+        400,
+        48
       ]
     },
     {
       "parameters": {
         "jsCode": "// Duplicate found — return the existing event ID\nconst existing = $('Check Existing').first().json;\n\nreturn [{\n  json: {\n    isDuplicate: true,\n    existing_event_id: existing.id\n  }\n}];"
       },
-      "id": "c2d3e4f5-2222-4bbb-cccc-200000000005",
+      "id": "48f79a7f-cb86-469f-8c72-1ded0ad8074d",
       "name": "Return Duplicate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        -120
+        624,
+        -48
       ]
     },
     {
@@ -138,13 +108,13 @@
           ]
         }
       },
-      "id": "c2d3e4f5-2222-4bbb-cccc-200000000006",
+      "id": "27d15c65-dbe5-4057-ac1a-15767370bc03",
       "name": "Insert Event",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1140,
-        120
+        624,
+        144
       ],
       "credentials": {
         "supabaseApi": {
@@ -157,29 +127,34 @@
       "parameters": {
         "jsCode": "// New event inserted — return the new event ID\nconst result = $input.first().json;\n\nreturn [{\n  json: {\n    isDuplicate: false,\n    event_id: result.id\n  }\n}];"
       },
-      "id": "c2d3e4f5-2222-4bbb-cccc-200000000007",
+      "id": "207e2f9e-0c21-4c89-b357-cf863787846d",
       "name": "Return New",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
-        120
+        848,
+        144
       ]
+    },
+    {
+      "parameters": {
+        "content": "## Deduplicate Event\n\n**Purpose:** Prevents duplicate event processing by checking hash-based signatures against Supabase.\n\n**Process:**\n1. Compute SHA-256 hash from source + dedup_key\n2. Query Supabase events table for existing hash\n3. If duplicate found → return existing event ID\n4. If new → insert event record with \"processing\" status → return new event ID\n\n**Input Required:**\n- `source` (enum: gmail, drive, webhook, form)\n- `dedup_key` (unique identifier for the event)\n- `event_type` (type of event being processed)\n\n**Output:**\n- `isDuplicate` (boolean)\n- `existing_event_id` OR `event_id`",
+        "height": 640,
+        "width": 1184,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -136,
+        -336
+      ],
+      "id": "b6edcca0-2fbd-4bfb-b014-5683451c880e",
+      "name": "Sticky Note2"
     }
   ],
   "pinData": {},
   "connections": {
-    "When Executed by Another Workflow": {
-      "main": [
-        [
-          {
-            "node": "Compute Hash",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Compute Hash": {
       "main": [
         [
@@ -235,14 +210,16 @@
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "callerPolicy": "any",
-    "errorWorkflow": "Fa1qAUIxfJj6SjfY"
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "versionId": "00000000-0000-0000-0000-000000000002",
+  "versionId": "dc73e76b-ee90-45f9-b702-baaea9ec146c",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },
-  "id": "",
+  "id": "rIRBjduPjTFXnn81",
   "tags": []
 }

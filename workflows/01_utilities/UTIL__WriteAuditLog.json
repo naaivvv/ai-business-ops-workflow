@@ -117,16 +117,16 @@
     },
     {
       "parameters": {
-        "content": "## Audit Log\n",
-        "height": 288,
+        "content": "## Audit Log\n\nThis utility workflow writes structured audit logs to Supabase for tracking workflow executions, AI calls, actions, and errors.\n\n**Input Requirements:**\n- workflow_name (required)\n- log_type (required): ai_call | action | error | audit\n- action (required)\n- status (optional): success | failure\n- execution_id, input_payload, output_payload, model, tokens_input, tokens_output, latency_ms, cost_usd, error_message (all optional)\n\n**Process:**\n1. Validates required fields and enum values\n2. Normalizes payloads to JSON strings\n3. Inserts log record to workflow_logs table\n4. Returns success status with log_id",
+        "height": 512,
         "width": 944,
         "color": 5
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        64,
-        -176
+        40,
+        -448
       ],
       "id": "dccace2c-a4ab-4fda-a2ba-7b9392b4947f",
       "name": "Sticky Note1"
@@ -177,7 +177,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "540c25d0-94cb-4f3b-aa30-b0d9400b46e7",
+  "versionId": "43312bbd-7453-4b78-8791-b3e80f76e337",
   "meta": {
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },

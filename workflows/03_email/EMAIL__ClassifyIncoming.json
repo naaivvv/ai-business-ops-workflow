@@ -18,7 +18,7 @@
       "typeVersion": 1.3,
       "position": [
         -144,
-        -32
+        80
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -36,8 +36,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        64,
-        -32
+        80,
+        80
       ]
     },
     {
@@ -63,8 +63,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        288,
-        -32
+        304,
+        80
       ]
     },
     {
@@ -96,8 +96,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        512,
-        -32
+        528,
+        80
       ]
     },
     {
@@ -109,8 +109,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        736,
-        128
+        752,
+        80
       ]
     },
     {
@@ -136,8 +136,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        944,
-        128
+        976,
+        80
       ]
     },
     {
@@ -149,8 +149,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1168,
-        128
+        1200,
+        80
       ]
     },
     {
@@ -183,8 +183,8 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1392,
-        128
+        1424,
+        80
       ],
       "credentials": {
         "supabaseApi": {
@@ -202,8 +202,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1616,
-        0
+        1648,
+        -16
       ]
     },
     {
@@ -229,8 +229,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1840,
-        0
+        1872,
+        -16
       ]
     },
     {
@@ -262,8 +262,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2064,
-        0
+        2096,
+        -16
       ]
     },
     {
@@ -275,7 +275,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2272,
+        2320,
         -112
       ]
     },
@@ -317,8 +317,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2272,
-        128
+        2320,
+        80
       ]
     },
     {
@@ -330,8 +330,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2496,
-        0
+        2544,
+        80
       ]
     },
     {
@@ -357,8 +357,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        2720,
-        0
+        2768,
+        80
       ]
     },
     {
@@ -370,8 +370,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1616,
-        304
+        1648,
+        176
       ]
     },
     {
@@ -397,22 +397,22 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1840,
-        304
+        1872,
+        176
       ]
     },
     {
       "parameters": {
-        "content": "## Classify Incoming Email\n\n",
-        "height": 592,
+        "content": "## Classify Incoming Email\n\n**Process Transcript:**\n1. Gmail Trigger monitors inbox for new messages\n2. Prepare deduplication input with email ID and source\n3. Check if email was already processed (UTIL__Deduplicate)\n4. Skip if duplicate; otherwise continue\n5. Extract metadata: sender, subject, body, attachments, dates\n6. Call AI classifier (UTIL__AICall) with structured prompt\n7. Parse classification response: category, urgency, confidence, department\n8. Update event record in Supabase with classification results\n9. Route notification to Slack #email-routing channel\n10. Check confidence score:\n    - Low confidence (<70%): Flag for human review\n    - High confidence: Check if draft reply needed\n11. Generate draft reply for inquiry/support emails (EMAIL__GenerateDraft)\n12. Log classification action to audit trail (UTIL__AuditLog)\n\n**Categories:** inquiry, support, sales, internal, urgent, spam\n**Departments:** sales, support, engineering, management, hr\n**Urgency Levels:** high, medium, low",
+        "height": 768,
         "width": 3248,
         "color": 2
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -208,
-        -144
+        -272,
+        -432
       ],
       "id": "2ddd5cbc-840a-4c36-bb07-0371f81633d8",
       "name": "Sticky Note3"
@@ -597,7 +597,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "53a481c7-24f8-4ee4-b996-3443cdc29bdc",
+  "versionId": "c0f4def4-fae8-43ec-bc02-b28b1dd05ce1",
   "meta": {
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },

@@ -206,7 +206,6 @@
     "timeSavedMode": "fixed",
     "errorWorkflow": "Fa1qAUIxfJj6SjfY",
     "callerPolicy": "workflowsFromSameOwner",
-    "executionTimeout": -1,
     "availableInMCP": false
   },
   "versionId": "cfbd70e9-d57c-4bd9-b18e-9fa8a1c48134",

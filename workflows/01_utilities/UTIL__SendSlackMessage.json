@@ -10,7 +10,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        208,
+        224,
         0
       ]
     },
@@ -30,7 +30,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [
-        400,
+        448,
         0
       ],
       "webhookId": "596d2569-ff94-444b-b69a-27f3e64cefe0",
@@ -50,21 +50,21 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        608,
+        672,
         0
       ]
     },
     {
       "parameters": {
-        "content": "## Send Slack Message\n",
-        "height": 288,
+        "content": "## Send Slack Message\n\n**Purpose:** Reusable utility workflow for sending Slack messages to specified channels.\n\n**Input Parameters:**\n- `message` (required): The message text to send\n- `channel` (optional): Target channel name (defaults to #ops-alerts)\n- `thread_ts` (optional): Thread timestamp for replying to a thread\n\n**Process:**\n1. Validate input parameters and set defaults\n2. Send message to Slack channel\n3. Return success status with message timestamp and channel\n\n**Output:**\n- `success`: Boolean indicating if message was sent\n- `message_ts`: Timestamp of the sent message\n- `channel`: Channel where message was posted",
+        "height": 560,
         "width": 944
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -80,
-        -96
+        -88,
+        -400
       ],
       "id": "c6f73739-cd3d-4a38-bd6c-ebe72ce864a6",
       "name": "Sticky Note1"
@@ -126,7 +126,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "661b8f7b-b552-4a3c-9d83-442840b250c5",
+  "versionId": "58b9469f-eff4-4c55-bb8a-37e5090803a6",
   "meta": {
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },

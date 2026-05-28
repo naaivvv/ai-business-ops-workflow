@@ -8,8 +8,8 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -640,
-        336
+        -416,
+        416
       ]
     },
     {
@@ -21,8 +21,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -448,
-        336
+        -192,
+        416
       ]
     },
     {
@@ -35,8 +35,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 1,
       "position": [
-        -240,
-        336
+        32,
+        320
       ]
     },
     {
@@ -48,7 +48,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -32,
+        -640,
         224
       ]
     },
@@ -62,7 +62,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        160,
+        -416,
         224
       ]
     },
@@ -99,7 +99,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        352,
+        -192,
         224
       ],
       "credentials": {
@@ -118,22 +118,22 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -32,
-        464
+        256,
+        320
       ]
     },
     {
       "parameters": {
-        "content": "## Chunk and Embed\n",
-        "height": 496,
-        "width": 1232,
+        "content": "## Chunk and Embed\n\n**Purpose:** Processes text documents by chunking them into manageable segments and generating embeddings for vector search.\n\n**Input:** Expects `text_content`, `document_id`, and optional `collection_name` from calling workflow.\n\n**Process:**\n1. Splits text into ~2000 character chunks with 200 character overlap\n2. Processes each chunk individually through the loop\n3. Generates embeddings via KB__GenerateEmbedding workflow\n4. Stores chunk text + embedding in Supabase `embeddings_metadata` table\n\n**Output:** Returns `chunk_count` for tracking.\n\n**Used by:** KB workflows that need to index documents for semantic search.",
+        "height": 672,
+        "width": 1312,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -704,
-        160
+        -848,
+        -80
       ],
       "id": "c8ba2266-b553-4e9c-8b25-d7c6fd66169e",
       "name": "Sticky Note1"
@@ -167,7 +167,7 @@
       "main": [
         [
           {
-            "node": "Prepare Embedding Input",
+            "node": "Return Count",
             "type": "main",
             "index": 0
           }
@@ -217,7 +217,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "229cdc90-f1c9-4a8c-bd3b-d4b2fb7c4ca7",
+  "versionId": "2c52aa9b-b8d1-4de1-8b60-14338d8c9655",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

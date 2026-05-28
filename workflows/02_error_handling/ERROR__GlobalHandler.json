@@ -3,26 +3,26 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "a869fc61-ceba-44e7-bb6c-0e4c36242cb9",
+      "id": "c57f24bb-da5b-4ffc-a43c-504152acd0eb",
       "name": "Error Trigger",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
       "position": [
-        288,
-        -64
+        -432,
+        96
       ]
     },
     {
       "parameters": {
         "jsCode": "const workflowName = $input.first().json.workflow.name;\nconst executionId = $input.first().json.execution.id;\nconst errorNode = $input.first().json.execution.error ? $input.first().json.execution.error.node : {};\nconst failedNode = errorNode.name || $input.first().json.execution.lastNodeExecuted || \"Unknown\";\nconst errorMessage = $input.first().json.execution.error ? $input.first().json.execution.error.message : \"Unknown Error\";\nconst executionLink = `https://edwin-bayog.app.n8n.cloud/workflow/executions/${executionId}`;\n\nreturn {\n  workflowName,\n  executionId,\n  failedNode,\n  errorMessage,\n  executionLink\n};"
       },
-      "id": "a108466f-dca5-474f-85c1-6f32a0d4da3e",
+      "id": "f0156004-97d3-404f-a845-72f2b6bf496c",
       "name": "Extract Error Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        512,
-        -64
+        -208,
+        96
       ]
     },
     {
@@ -36,13 +36,13 @@
         "text": "=🚨 *Workflow Failed*\n*Workflow:* {{$json.workflowName}}\n*Failed Node:* {{$json.failedNode}}\n*Error:* {{$json.errorMessage}}\n*Execution:* {{$json.executionLink}}",
         "otherOptions": {}
       },
-      "id": "c9da152b-b63b-46b6-aad5-0b4f5e411f6b",
+      "id": "c98b32f0-9e58-438f-8101-2f5960868bdb",
       "name": "Send Error Alert",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [
-        720,
-        -160
+        16,
+        0
       ],
       "webhookId": "392574f4-139d-427e-9371-832abb8e3dc9",
       "credentials": {
@@ -88,13 +88,13 @@
           ]
         }
       },
-      "id": "dfb137fa-0360-44e4-8f6a-e0e21af79fa4",
+      "id": "005d9162-86ba-4184-a7fa-5a7d8a7bfc51",
       "name": "Log Error to Dead Letter Queue",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        720,
-        48
+        16,
+        192
       ],
       "credentials": {
         "supabaseApi": {
@@ -102,6 +102,22 @@
           "name": "Supabase account"
         }
       }
+    },
+    {
+      "parameters": {
+        "content": "## Error Global Handler\n\n**Purpose:** Centralized error monitoring and logging system that captures workflow failures across all n8n workflows.\n\n**Process:**\n1. **Error Trigger** - Automatically fires when any workflow in the instance fails\n2. **Extract Error Context** - Parses error details including workflow name, execution ID, failed node, error message, and generates execution link\n3. **Send Error Alert** - Posts formatted error notification to Slack channel with all relevant details\n4. **Log Error to Dead Letter Queue** - Persists error record to Supabase workflow_logs table for audit trail and analysis\n\n**Outputs:** Real-time Slack alerts + persistent error logs in database",
+        "height": 640,
+        "width": 768,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        -256
+      ],
+      "id": "fee1ba60-26e8-4206-9aef-c51a4a7f91b2",
+      "name": "Sticky Note"
     }
   ],
   "pinData": {},
@@ -139,9 +155,8 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "9d3eca13-e94a-4fa3-a78c-35ec046af079",
+  "versionId": "71f501c3-4441-458f-9e48-b314129cffd3",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },
   "id": "Fa1qAUIxfJj6SjfY",

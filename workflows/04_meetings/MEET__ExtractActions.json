@@ -9,7 +9,7 @@
       "typeVersion": 1,
       "position": [
         -656,
-        -16
+        -32
       ]
     },
     {
@@ -21,8 +21,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
       "position": [
-        -448,
-        -16
+        -432,
+        -32
       ]
     },
     {
@@ -35,8 +35,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        -256,
-        -16
+        -208,
+        -32
       ]
     },
     {
@@ -48,8 +48,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -48,
-        -16
+        16,
+        -32
       ]
     },
     {
@@ -68,8 +68,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        160,
-        -16
+        240,
+        -32
       ]
     },
     {
@@ -82,7 +82,7 @@
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 1,
       "position": [
-        352,
+        464,
         -128
       ]
     },
@@ -96,7 +96,7 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 1,
       "position": [
-        560,
+        688,
         -128
       ]
     },
@@ -109,7 +109,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        752,
+        912,
         -128
       ],
       "credentials": {
@@ -128,22 +128,22 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        752,
-        80
+        464,
+        64
       ]
     },
     {
       "parameters": {
-        "content": "## Extract Actions\n",
-        "height": 400,
-        "width": 1664,
+        "content": "## Extract Actions\n\nThis workflow processes meeting transcripts to extract action items, decisions, and risks using AI.\n\n**Flow:**\n1. Receives transcript data from parent workflow\n2. Prepares input for AI extraction\n3. Calls AI Extract workflow to analyze content\n4. Parses JSON response containing action items, decisions, and risks\n5. If action items exist, splits them and creates individual tasks in Supabase\n6. Returns summary with counts and created task IDs",
+        "height": 544,
+        "width": 1792,
         "color": 5
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -688,
-        -160
+        -704,
+        -320
       ],
       "id": "f11c8ba4-0135-4ff7-b0d5-776cc9084df7",
       "name": "Sticky Note1"
@@ -256,7 +256,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "12b6fce0-698f-4163-a0b5-081c63c8b408",
+  "versionId": "c5db940b-32f6-4cfb-8422-86cc3be731ae",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

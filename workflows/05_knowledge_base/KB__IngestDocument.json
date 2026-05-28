@@ -20,13 +20,13 @@
         "event": "fileCreated",
         "options": {}
       },
-      "id": "75988ad2-85d2-46f8-9250-5b2afbf18853",
+      "id": "1e6d532b-e29c-46fc-92c3-9d1250a3d893",
       "name": "Google Drive Trigger",
       "type": "n8n-nodes-base.googleDriveTrigger",
       "typeVersion": 1,
       "position": [
-        1296,
-        80
+        -224,
+        128
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -40,13 +40,13 @@
         "workflowId": "rIRBjduPjTFXnn81",
         "options": {}
       },
-      "id": "023b35ad-b8da-4f2e-a680-613aa22c4fca",
+      "id": "13f5dad6-95a8-413d-9036-3e7e9c145738",
       "name": "Deduplicate",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        1504,
-        80
+        0,
+        128
       ]
     },
     {
@@ -60,13 +60,13 @@
           ]
         }
       },
-      "id": "2f297355-4c32-4ad1-86ec-c1ebeb806bc0",
+      "id": "a8fb21a0-28ce-4bc0-8288-93463b5b5ef4",
       "name": "Skip if Duplicate",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        1696,
-        80
+        224,
+        128
       ]
     },
     {
@@ -75,13 +75,13 @@
         "fileId": "={{ $('Google Drive Trigger').item.json.id }}",
         "options": {}
       },
-      "id": "dd25e904-f3d1-461e-b23c-0bc35c5e310e",
+      "id": "e0b9886a-d832-4b62-aa55-1004123ce642",
       "name": "Download File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 2,
       "position": [
-        1904,
-        192
+        448,
+        128
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -94,26 +94,26 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  let text = '';\n  const mimeType = item.json.mimeType || $('Google Drive Trigger').item.json.mimeType;\n  \n  if (mimeType === 'application/vnd.google-apps.document' || mimeType === 'text/plain') {\n    // Text directly from Drive\n    if (item.binary && item.binary.data) {\n       text = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n    }\n  }\n  item.json.extracted_text = text;\n  item.json.source_type = mimeType === 'application/pdf' ? 'pdf' : \n                         (mimeType === 'application/vnd.google-apps.document' ? 'google_doc' : \n                         (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'docx' : 'unknown'));\n  item.json.title = $('Google Drive Trigger').item.json.name;\n  item.json.source_file_id = $('Google Drive Trigger').item.json.id;\n  return item;\n});"
       },
-      "id": "86233608-63c5-4b6a-a320-40669f692130",
+      "id": "afbc00a5-1488-407e-88a2-9e419cf113f4",
       "name": "Extract Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2096,
-        192
+        672,
+        128
       ]
     },
     {
       "parameters": {
         "jsCode": "const crypto = require('crypto');\nconst items = $input.all();\n\nreturn items.map(item => {\n  const text = item.json.extracted_text || '';\n  const hash = crypto.createHash('sha256').update(text).digest('hex');\n  item.json.content_hash = hash;\n  return item;\n});"
       },
-      "id": "9d5e1c63-b2ae-4199-961a-0c0cc43bfdd5",
+      "id": "7163e297-563a-4088-9eca-5e97e684ba61",
       "name": "Compute Content Hash",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2304,
-        192
+        896,
+        128
       ]
     },
     {
@@ -131,13 +131,13 @@
           ]
         }
       },
-      "id": "3da2f628-f118-4f75-b34a-f779a1f11aba",
+      "id": "be816820-b7ea-4f24-a18b-048a922b971f",
       "name": "Check Existing Document",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2496,
-        192
+        1120,
+        128
       ],
       "credentials": {
         "supabaseApi": {
@@ -157,13 +157,13 @@
           ]
         }
       },
-      "id": "c2aaa0c6-f522-4859-a219-e47a2d301c67",
+      "id": "553cf88d-e1f5-4b14-a209-60e4128e370c",
       "name": "Document Changed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        2704,
-        192
+        1344,
+        128
       ]
     },
     {
@@ -180,13 +180,13 @@
           ]
         }
       },
-      "id": "bdc4caca-db8e-415a-866e-75cea222ff4d",
+      "id": "a3a9f421-8b0d-4309-8451-e84012c31bad",
       "name": "Delete Old Embeddings Metadata",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2896,
-        192
+        1568,
+        128
       ],
       "credentials": {
         "supabaseApi": {
@@ -199,13 +199,13 @@
       "parameters": {
         "operation": "upsert"
       },
-      "id": "7c691569-b289-45cb-a5ab-e7ffbb04717a",
+      "id": "a8f286e5-d10e-4ce7-9054-983f9bd3dcbd",
       "name": "Upsert Document",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        3104,
-        192
+        1792,
+        128
       ],
       "credentials": {
         "supabaseApi": {
@@ -219,13 +219,13 @@
         "workflowId": "3zE30DDyaAnXJNPS",
         "options": {}
       },
-      "id": "9217751e-8082-48d2-9c99-60504ff91912",
+      "id": "b9aef027-3450-484d-8445-2d0d35d24890",
       "name": "Chunk and Embed",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        3296,
-        192
+        2016,
+        128
       ]
     },
     {
@@ -249,13 +249,13 @@
           ]
         }
       },
-      "id": "6d99b62b-62e4-4ac4-b093-47e01536dece",
+      "id": "5e797388-068f-4a10-bed2-701b4e9b2c4b",
       "name": "Mark Complete",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        3504,
-        192
+        2240,
+        128
       ],
       "credentials": {
         "supabaseApi": {
@@ -269,29 +269,29 @@
         "workflowId": "jCqmfSwQOsGcrJDa",
         "options": {}
       },
-      "id": "3b4e452a-89ec-4fd7-b6ef-ee616a763a88",
+      "id": "ef74a44a-d29c-4baf-9a0f-6d9ac307cf58",
       "name": "Audit Log",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        3696,
-        192
+        2464,
+        128
       ]
     },
     {
       "parameters": {
-        "content": "## Ingest Document\n",
-        "height": 416,
-        "width": 2672,
+        "content": "## Ingest Document\n\nMonitors a Google Drive folder for new documents. When a file is created:\n1. Deduplicates to prevent reprocessing\n2. Downloads and extracts text content\n3. Computes content hash to detect changes\n4. Checks if document already exists in Supabase\n5. If changed: deletes old embeddings, upserts document record\n6. Chunks text and generates embeddings\n7. Marks document as complete and logs to audit trail",
+        "height": 480,
+        "width": 2960,
         "color": 3
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1232,
-        -16
+        -280,
+        -144
       ],
-      "id": "462dd7f8-5abb-45f9-be94-f4630c1c02d6",
+      "id": "b4972602-30a9-465d-b398-bac493dfaeb0",
       "name": "Sticky Note1"
     }
   ],
@@ -441,7 +441,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "6b0c3161-833d-4784-a091-396d5f5d15ea",
+  "versionId": "e0609c16-2274-4d0c-b802-5c6580ab7796",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
