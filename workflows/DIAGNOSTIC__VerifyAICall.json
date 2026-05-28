@@ -1,0 +1,97 @@
+{
+    "name": "DIAGNOSTIC__VerifyAICall",
+    "nodes": [
+        {
+            "parameters": {},
+            "id": "manual-trigger-id",
+            "name": "When clicking \"Test workflow\"",
+            "type": "n8n-nodes-base.manualTrigger",
+            "typeVersion": 1,
+            "position": [
+                0,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "return [\n  {\n    json: {\n      test_name: \"Primary Fast LLM\",\n      prompt: \"Respond with exactly the word 'ONLINE'.\",\n      model_preference: \"fast\",\n      system_message: \"You are a validation tester. Be brief.\"\n    }\n  },\n  {\n    json: {\n      test_name: \"Failover / Large Context LLM\",\n      prompt: \"Respond with exactly the word 'ONLINE'.\",\n      model_preference: \"large-context\",\n      system_message: \"You are a validation tester. Be brief.\"\n    }\n  },\n  {\n    json: {\n      test_name: \"Hugging Face Embedding\",\n      prompt: \"Verify embedding matrix generation latency and dimension payload.\",\n      model_preference: \"embedding\"\n    }\n  }\n];"
+            },
+            "id": "generate-cases-id",
+            "name": "Generate Test Cases",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                220,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "workflowId": "n8dUKBJ3yMSedWTk",
+                "options": {}
+            },
+            "id": "execute-aicall-id",
+            "name": "Execute AICall Utility",
+            "type": "n8n-nodes-base.executeWorkflow",
+            "typeVersion": 1,
+            "position": [
+                440,
+                0
+            ],
+            "settings": {
+                "continueOnFail": true
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const items = $input.all();\nconst summary = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i].json;\n  // Match back to the original test inputs via paired item context\n  const originalTest = $('Generate Test Cases').all()[i]?.json || {};\n  \n  let status = \"🟢 PASS\";\n  let notes = \"Model responded successfully.\";\n  \n  if (item.error || !item.response || (typeof item.response === 'string' && item.response.startsWith(\"ERROR:\"))) {\n    status = \"🔴 FAIL\";\n    notes = item.error?.message || item.response || \"Unknown API or Network error.\";\n  }\n\n  summary.push({\n    json: {\n      test_name: originalTest.test_name,\n      model_preference: originalTest.model_preference,\n      model_used: item.model_used || (originalTest.model_preference === 'embedding' ? 'all-MiniLM-L6-v2' : 'Unknown'),\n      status: status,\n      latency: item.latency_ms ? `${item.latency_ms}ms` : 'N/A',\n      tokens_used: item.tokens_input ? (item.tokens_input + item.tokens_output) : 0,\n      response_sample: typeof item.response === 'object' ? `Vector Array (Length: ${item.response.length || 0})` : String(item.response).substring(0, 60),\n      error_details: notes\n    }\n  });\n}\n\nreturn summary;"
+            },
+            "id": "compile-dashboard-id",
+            "name": "Compile Diagnostics Dashboard",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                660,
+                0
+            ]
+        }
+    ],
+    "connections": {
+        "When clicking \"Test workflow\"": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Test Cases",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Test Cases": {
+            "main": [
+                [
+                    {
+                        "node": "Execute AICall Utility",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Execute AICall Utility": {
+            "main": [
+                [
+                    {
+                        "node": "Compile Diagnostics Dashboard",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

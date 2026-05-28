@@ -140,17 +140,30 @@
       "parameters": {
         "content": "## Deduplicate Event\n\n**Purpose:** Prevents duplicate event processing by checking hash-based signatures against Supabase.\n\n**Process:**\n1. Compute SHA-256 hash from source + dedup_key\n2. Query Supabase events table for existing hash\n3. If duplicate found → return existing event ID\n4. If new → insert event record with \"processing\" status → return new event ID\n\n**Input Required:**\n- `source` (enum: gmail, drive, webhook, form)\n- `dedup_key` (unique identifier for the event)\n- `event_type` (type of event being processed)\n\n**Output:**\n- `isDuplicate` (boolean)\n- `existing_event_id` OR `event_id`",
         "height": 640,
-        "width": 1184,
+        "width": 1328,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -136,
+        -288,
         -336
       ],
       "id": "b6edcca0-2fbd-4bfb-b014-5683451c880e",
       "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        48
+      ],
+      "id": "bc6e6b12-9706-42db-a818-aeeb1223b85f",
+      "name": "When Executed by Another Workflow"
     }
   ],
   "pinData": {},
@@ -205,6 +218,17 @@
           }
         ]
       ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Compute Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -216,7 +240,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "dc73e76b-ee90-45f9-b702-baaea9ec146c",
+  "versionId": "37e98f98-0ee8-476d-9c5d-c4d9a18199ef",
   "meta": {
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },
