@@ -3,21 +3,27 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger",
+      "id": "9a4f7835-9149-40a7-a63f-7ee889a01899",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        -144,
+        -32
+      ]
     },
     {
       "parameters": {
         "jsCode": "const item = $input.first().json;\nconst pref = item.model_preference || 'fast';\n\nlet primary = \"meta-llama/llama-3.3-70b-instruct:free\";\nlet failover = \"google/gemini-2.5-pro:free\";\nlet is_embedding = false;\n\nif (pref === 'large-context') {\n  primary = \"google/gemini-2.5-pro:free\";\n  failover = \"meta-llama/llama-3.3-70b-instruct:free\";\n} else if (pref === 'embedding') {\n  primary = \"sentence-transformers/all-MiniLM-L6-v2\";\n  failover = null;\n  is_embedding = true;\n}\n\nreturn {\n  json: {\n    ...item,\n    primary_model: primary,\n    failover_model: failover,\n    is_embedding: is_embedding,\n    start_time: Date.now()\n  }\n};"
       },
-      "id": "select_model",
+      "id": "2097290a-da51-4599-a98b-036de26bf385",
       "name": "Select Model",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [200, 0]
+      "position": [
+        64,
+        -32
+      ]
     },
     {
       "parameters": {
@@ -30,32 +36,42 @@
           ]
         }
       },
-      "id": "is_embedding",
+      "id": "46c3f1c0-4c48-4ae9-9ded-3278b6f2b1de",
       "name": "Is Embedding?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [400, 0]
+      "position": [
+        272,
+        -32
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "huggingFaceApi",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ inputs: [$json.prompt] }) }}",
         "options": {}
       },
-      "id": "hf_embedding",
+      "id": "bb151436-8d01-4fc1-8d9a-debb2ad58f12",
       "name": "Generate Embedding (Hugging Face)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [600, -200],
+      "position": [
+        464,
+        -224
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "hfId",
-          "name": "Hugging Face Embeddings"
+          "id": "XXmyXa4zZBlya10W",
+          "name": "Header Auth account"
+        },
+        "huggingFaceApi": {
+          "id": "mKrpkSxZm8GGRLio",
+          "name": "Hugging Face account"
         }
       }
     },
@@ -63,36 +79,46 @@
       "parameters": {
         "jsCode": "const item = $input.first().json;\nconst body = {\n  model: item.primary_model,\n  messages: [\n    { role: \"system\", content: item.system_message || \"You are a helpful assistant.\" },\n    { role: \"user\", content: item.prompt }\n  ]\n};\n\nif (item.max_tokens) {\n  body.max_tokens = item.max_tokens;\n}\n\nif (item.output_format === 'json') {\n  body.response_format = { type: \"json_object\" };\n}\n\nreturn { json: { ...item, request_body: body } };"
       },
-      "id": "prep_primary",
+      "id": "da023b55-2863-4a7c-9f80-1e27fa66e337",
       "name": "Prepare Chat Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [600, 200]
+      "position": [
+        464,
+        176
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://openrouter.ai/api/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.request_body) }}",
         "options": {}
       },
-      "id": "chat_primary",
+      "id": "a67a8679-c973-479c-b5e5-e4a1b62b57d8",
       "name": "Chat Completion (OpenRouter)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [800, 200],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "openRouterId",
-          "name": "OpenRouter API"
-        }
-      },
+      "position": [
+        672,
+        176
+      ],
       "settings": {
         "continueOnFail": true
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XXmyXa4zZBlya10W",
+          "name": "Header Auth account"
+        },
+        "openRouterApi": {
+          "id": "bQsT6DYTg5L6QhOR",
+          "name": "OpenRouter account"
+        }
       }
     },
     {
@@ -106,80 +132,119 @@
           ]
         }
       },
-      "id": "check_primary",
+      "id": "64a58972-2586-4d07-87a6-b4d0ff8e9a91",
       "name": "Did Primary Succeed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [1000, 200]
+      "position": [
+        864,
+        176
+      ]
     },
     {
       "parameters": {
         "jsCode": "const orig = $('Select Model').first().json;\nconst body = {\n  model: orig.failover_model,\n  messages: [\n    { role: \"system\", content: orig.system_message || \"You are a helpful assistant.\" },\n    { role: \"user\", content: orig.prompt }\n  ]\n};\n\nif (orig.max_tokens) {\n  body.max_tokens = orig.max_tokens;\n}\n\nif (orig.output_format === 'json') {\n  body.response_format = { type: \"json_object\" };\n}\n\nreturn { json: { ...orig, request_body: body } };"
       },
-      "id": "prep_failover",
+      "id": "0288cf67-270a-4943-b5b0-2dc981d0bff1",
       "name": "Prepare Failover Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 400]
+      "position": [
+        1072,
+        384
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://openrouter.ai/api/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.request_body) }}",
         "options": {}
       },
-      "id": "chat_failover",
+      "id": "509488a3-4fb5-4667-a284-a356a5ad97a5",
       "name": "Chat Completion Failover",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1400, 400],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "openRouterId",
-          "name": "OpenRouter API"
-        }
-      },
+      "position": [
+        1264,
+        384
+      ],
       "settings": {
         "continueOnFail": true
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XXmyXa4zZBlya10W",
+          "name": "Header Auth account"
+        },
+        "openRouterApi": {
+          "id": "bQsT6DYTg5L6QhOR",
+          "name": "OpenRouter account"
+        }
       }
     },
     {
       "parameters": {
         "jsCode": "const original = $('Select Model').first().json;\nconst httpData = $input.first().json;\n\nlet aiOutput = '';\nlet promptTokens = 0;\nlet completionTokens = 0;\nlet modelUsed = original.primary_model;\n\nif (original.is_embedding) {\n  aiOutput = httpData; \n} else {\n  const failoverItems = $('Chat Completion Failover').all();\n  if (failoverItems && failoverItems.length > 0) {\n    modelUsed = original.failover_model;\n  }\n\n  if (httpData.choices && httpData.choices.length > 0) {\n    aiOutput = httpData.choices[0].message.content;\n    promptTokens = httpData.usage ? httpData.usage.prompt_tokens : 0;\n    completionTokens = httpData.usage ? httpData.usage.completion_tokens : 0;\n  } else {\n    aiOutput = \"ERROR: \" + JSON.stringify(httpData);\n  }\n}\n\nconst latencyMs = Date.now() - original.start_time;\n\nreturn {\n  json: {\n    ...original,\n    response: aiOutput,\n    model_used: modelUsed,\n    tokens_input: promptTokens,\n    tokens_output: completionTokens,\n    latency_ms: latencyMs,\n    cost_usd: 0.00,\n    workflow_name: \"UTIL__AICall\",\n    log_type: \"ai_call\",\n    action: original.is_embedding ? \"ai_embedding\" : \"ai_completion\",\n    input_payload: original.prompt\n  }\n};"
       },
-      "id": "calc_usage",
+      "id": "31b22197-97cf-4a1a-865e-f72f8fc98824",
       "name": "Calculate Usage",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1600, 0]
+      "position": [
+        1472,
+        -32
+      ]
     },
     {
       "parameters": {
-        "workflowId": "UTIL__WriteAuditLog",
+        "workflowId": "jCqmfSwQOsGcrJDa",
         "options": {}
       },
-      "id": "log_usage",
+      "id": "137511b4-50d4-494d-8e5d-540eb169ee3b",
       "name": "Log Usage",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
-      "position": [1800, 0]
+      "position": [
+        1664,
+        -32
+      ]
     },
     {
       "parameters": {
         "jsCode": "const calcData = $('Calculate Usage').first().json;\n\nreturn {\n  json: {\n    response: calcData.response,\n    model_used: calcData.model_used,\n    tokens_input: calcData.tokens_input,\n    tokens_output: calcData.tokens_output,\n    latency_ms: calcData.latency_ms,\n    cost_usd: calcData.cost_usd\n  }\n};"
       },
-      "id": "return_response",
+      "id": "ccf950ec-2e3e-434e-909a-fc10019d38c2",
       "name": "Return Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 0]
+      "position": [
+        1872,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## AI Call\n",
+        "height": 912,
+        "width": 2320,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -320
+      ],
+      "id": "4eb67b13-2403-4c36-9a21-0eb9ec96809b",
+      "name": "Sticky Note1"
     }
   ],
+  "pinData": {},
   "connections": {
     "When Executed by Another Workflow": {
       "main": [
@@ -317,9 +382,19 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "callerPolicy": "any",
-    "errorWorkflow": "CpXv8Are7dDLolBo"
-  }
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "027efee6-d4c7-46e8-939f-06015790154a",
+  "meta": {
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "n8dUKBJ3yMSedWTk",
+  "tags": []
 }

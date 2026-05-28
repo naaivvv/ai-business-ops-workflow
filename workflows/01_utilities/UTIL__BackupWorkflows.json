@@ -1,0 +1,219 @@
+{
+  "name": "UTIL__BackupWorkflows",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1VNcaQ9GoNMoC1VfStBq4p0XpPZ5KfOQt",
+          "mode": "list",
+          "cachedResultName": "Business Ops N8N Backups",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1VNcaQ9GoNMoC1VfStBq4p0XpPZ5KfOQt"
+        },
+        "event": "watchFolderUpdated"
+      },
+      "id": "d84bd159-743d-422d-9f59-d6d07f67a073",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        1040
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "P4ItnczlmD9WHDuQ",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "a40bd1a1-5d19-493e-bd47-c2375b9f3ccf",
+      "name": "Download Export File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        1040
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "P4ItnczlmD9WHDuQ",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nlet raw = '';\n\nif (item.binary?.data?.data) {\n  raw = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n} else if (typeof item.json === 'string') {\n  raw = item.json;\n} else if (item.json?.content) {\n  raw = item.json.content;\n} else {\n  raw = JSON.stringify(item.json || {});\n}\n\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  throw new Error(`Uploaded export file is not valid JSON: ${error.message}`);\n}\n\nconst workflows = Array.isArray(parsed)\n  ? parsed\n  : Array.isArray(parsed.workflows)\n    ? parsed.workflows\n    : Array.isArray(parsed.data)\n      ? parsed.data\n      : (parsed.name && parsed.nodes ? [parsed] : []);\n\nif (workflows.length === 0) {\n  throw new Error('No workflows found in export file. Upload an n8n workflow export JSON file.');\n}\n\nconst date = new Date().toISOString().slice(0, 10);\n\nreturn workflows\n  .filter(workflow => workflow && workflow.name && Array.isArray(workflow.nodes))\n  .map(workflow => {\n    const safeName = workflow.name\n      .replace(/[\\\\/:*?\"<>|]/g, '-')\n      .replace(/\\s+/g, '_')\n      .replace(/_+/g, '_')\n      .trim();\n\n    return {\n      json: {\n        workflow_id: workflow.id || null,\n        workflow_name: workflow.name,\n        filename: `workflows/${safeName}.json`,\n        content: JSON.stringify(workflow, null, 2),\n        commit_message: `Backup: ${workflow.name} - ${date}`,\n        backup_date: date,\n        source_file_id: $('Google Drive Trigger').item.json.id,\n        source_file_name: $('Google Drive Trigger').item.json.name\n      }\n    };\n  });"
+      },
+      "id": "0a9ec5cb-3e3b-4300-8ae0-c0799c30a63c",
+      "name": "Parse Export File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2496,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "upsert",
+        "owner": "your-username",
+        "repository": "n8n-workflow-backups",
+        "filePath": "={{ $json.filename }}"
+      },
+      "id": "421cddb7-b75e-4efe-ade1-f1fef8a1299a",
+      "name": "Create or Update File",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        2720,
+        1040
+      ],
+      "webhookId": "95b436ea-7063-427e-9229-f6b08c9a06c2",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "mvSbUHQo6gOxbTYJ",
+          "name": "GitHub OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let backedUp = [];\ntry {\n  backedUp = $('Parse Export File').all().map(item => ({\n    workflow_id: item.json.workflow_id,\n    workflow_name: item.json.workflow_name,\n    path: item.json.filename\n  }));\n} catch (e) {\n  backedUp = [];\n}\n\nconst first = $('Parse Export File').first().json;\n\nreturn [{\n  json: {\n    backed_up_count: backedUp.length,\n    failures_count: 0,\n    backed_up_workflows: backedUp,\n    source_file_id: first.source_file_id,\n    source_file_name: first.source_file_name,\n    backup_date: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "a0337ca7-984c-4f68-8729-bec4bf366d17",
+      "name": "Build Backup Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2944,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "jCqmfSwQOsGcrJDa",
+        "mode": "each",
+        "options": {}
+      },
+      "id": "d0c29e03-16b7-4e3e-9bf9-179058b4d2ea",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        3168,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## UTIL__BackupWorkflows\nManual-export backup for n8n plans without API access.\n\nHow to use:\n- In n8n, manually export workflows as JSON\n- Upload the export JSON to the watched Google Drive folder\n- This workflow parses the export and backs up each workflow to GitHub\n\nBefore activating:\n- Replace YOUR_N8N_EXPORTS_FOLDER_ID with the Google Drive folder ID\n- Replace owner your-username with the real GitHub owner\n- Create GitHub API credential named GitHub Backups",
+        "height": 584,
+        "width": 1360,
+        "color": 5
+      },
+      "id": "ac6c250e-c98e-42f3-9858-ee1f5ab0bb4a",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        640
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Export File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Export File": {
+      "main": [
+        [
+          {
+            "node": "Parse Export File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Export File": {
+      "main": [
+        [
+          {
+            "node": "Create or Update File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or Update File": {
+      "main": [
+        [
+          {
+            "node": "Build Backup Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Backup Summary": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "cfbd70e9-d57c-4bd9-b18e-9fa8a1c48134",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "GiOkpW6AJ4rTCYPa",
+  "tags": []
+}

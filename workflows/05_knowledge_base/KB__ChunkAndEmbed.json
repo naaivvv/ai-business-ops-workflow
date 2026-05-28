@@ -3,26 +3,26 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "c67f83de-47e3-4968-9731-738b4f7eb751",
+      "id": "925a60f4-37ab-4183-bb1b-41f033edfdb5",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -496,
-        112
+        -640,
+        336
       ]
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\nconst results = [];\n\nitems.forEach(item => {\n  const textContent = item.json.text_content || '';\n  const documentId = item.json.document_id;\n  const collectionName = item.json.collection_name || 'knowledge_base';\n  \n  const paragraphs = textContent.split('\\n\\n');\n  const MAX_CHARS = 2000;\n  const OVERLAP_CHARS = 200;\n  \n  let currentChunk = '';\n  let chunkIndex = 0;\n  \n  for (let i = 0; i < paragraphs.length; i++) {\n    const p = paragraphs[i];\n    \n    if ((currentChunk.length + p.length) > MAX_CHARS && currentChunk.length > 0) {\n      // Save current chunk\n      results.push({\n        json: {\n          chunk_index: chunkIndex++,\n          chunk_text: currentChunk.trim(),\n          document_id: documentId,\n          collection_name: collectionName\n        }\n      });\n      \n      // Start new chunk with overlap\n      let overlapText = currentChunk.slice(-OVERLAP_CHARS);\n      const lastSpace = overlapText.indexOf(' ');\n      if (lastSpace !== -1 && lastSpace < OVERLAP_CHARS / 2) {\n         overlapText = overlapText.slice(lastSpace + 1);\n      }\n      currentChunk = overlapText + '\\n\\n' + p;\n    } else {\n      currentChunk += (currentChunk ? '\\n\\n' : '') + p;\n    }\n  }\n  \n  if (currentChunk.trim().length > 0) {\n    results.push({\n      json: {\n        chunk_index: chunkIndex++,\n        chunk_text: currentChunk.trim(),\n        document_id: documentId,\n        collection_name: collectionName\n      }\n    });\n  }\n});\n\nreturn results;"
       },
-      "id": "b5a83123-9494-4bdc-ac01-98ba04205848",
+      "id": "ca8b06a8-b060-487f-a554-4661503cceca",
       "name": "Chunk Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -304,
-        112
+        -448,
+        336
       ]
     },
     {
@@ -30,40 +30,40 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "a980b7e1-bd6c-4a0d-adc5-e58ef5f36488",
+      "id": "ab012f26-e5f1-4e9e-8421-c619629db060",
       "name": "Process Each Chunk",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 1,
       "position": [
-        -96,
-        112
+        -240,
+        336
       ]
     },
     {
       "parameters": {
         "jsCode": "return {\n  json: {\n    prompt: $json.chunk_text,\n    model_preference: 'embedding'\n  }\n};"
       },
-      "id": "cd815266-0ee3-4dcf-8223-5968a19cf9e3",
+      "id": "1cd24503-da20-4ddf-8936-509223bef6f1",
       "name": "Prepare Embedding Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        112,
-        0
+        -32,
+        224
       ]
     },
     {
       "parameters": {
-        "workflowId": "UTIL__AICall",
+        "workflowId": "n8dUKBJ3yMSedWTk",
         "options": {}
       },
-      "id": "d4771dee-02e5-45e8-bd61-3df1bc51b5c8",
+      "id": "8083fa7d-a5f3-48e7-9b32-c7bbdab4748a",
       "name": "Generate Embedding",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        304,
-        0
+        160,
+        224
       ]
     },
     {
@@ -94,13 +94,13 @@
           ]
         }
       },
-      "id": "774352b5-4fd0-47c7-ae11-269dc1a95115",
+      "id": "021a2a25-73e4-4710-b7e0-0db46a3051c4",
       "name": "Insert Embedding",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        496,
-        0
+        352,
+        224
       ],
       "credentials": {
         "supabaseApi": {
@@ -113,29 +113,29 @@
       "parameters": {
         "jsCode": "return {\n  json: {\n    chunk_count: $('Chunk Text').all().length\n  }\n};"
       },
-      "id": "5091b37c-90de-4f90-9c16-8aa4844568e9",
+      "id": "2193aff5-c635-406d-a786-1cdf2b3515ff",
       "name": "Return Count",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        112,
-        240
+        -32,
+        464
       ]
     },
     {
       "parameters": {
         "content": "## Chunk and Embed\n",
         "height": 496,
-        "width": 1168,
+        "width": 1232,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -560,
-        -64
+        -704,
+        160
       ],
-      "id": "c6e4f510-a2d2-482b-ad10-5647f595e898",
+      "id": "c8ba2266-b553-4e9c-8b25-d7c6fd66169e",
       "name": "Sticky Note1"
     }
   ],
@@ -168,13 +168,6 @@
         [
           {
             "node": "Prepare Embedding Input",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Return Count",
             "type": "main",
             "index": 0
           }
@@ -215,16 +208,16 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "timeSavedMode": "fixed",
-    "errorWorkflow": "CpXv8Are7dDLolBo",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "b3381505-c57b-4117-b409-46359acf6921",
+  "versionId": "229cdc90-f1c9-4a8c-bd3b-d4b2fb7c4ca7",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

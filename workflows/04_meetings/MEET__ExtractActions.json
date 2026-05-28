@@ -3,81 +3,53 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "50cd7470-5f62-4ffb-8a3f-b6bfdbf366a4",
+      "id": "009193a4-d4de-4257-bf95-4101b12605f5",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -448,
-        304
+        -656,
+        -16
       ]
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "a1",
-              "name": "prompt",
-              "value": "Extract action items, decisions, and risks from this meeting transcript.\n\nTranscript:\n{{ $json.transcript_text }}\n\nRespond with JSON:\n{\n  \"action_items\": [\n    { \"description\": \"...\", \"owner\": \"person name or null\", \"deadline\": \"date or null\", \"priority\": \"high/medium/low\" }\n  ],\n  \"decisions\": [\n    { \"decision\": \"...\", \"context\": \"...\" }\n  ],\n  \"risks\": [\n    { \"risk\": \"...\", \"severity\": \"high/medium/low\" }\n  ]\n}",
-              "type": "string"
-            },
-            {
-              "id": "a2",
-              "name": "system_message",
-              "value": "You are a meeting analyst. Extract concrete, actionable items with specific owners and deadlines when mentioned. Be precise — only extract real commitments, not vague discussions.",
-              "type": "string"
-            },
-            {
-              "id": "a3",
-              "name": "model_preference",
-              "value": "fast",
-              "type": "string"
-            },
-            {
-              "id": "a4",
-              "name": "output_format",
-              "value": "json",
-              "type": "string"
-            }
-          ]
-        },
         "options": {}
       },
-      "id": "6b6f44d6-7ed5-4bc3-9fe4-00c76ad9bbc9",
+      "id": "7775ec95-e51e-4d18-8015-e4362afe3221",
       "name": "Prepare AI Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
       "position": [
-        -240,
-        304
+        -448,
+        -16
       ]
     },
     {
       "parameters": {
-        "workflowId": "UTIL__AICall",
+        "workflowId": "n8dUKBJ3yMSedWTk",
         "options": {}
       },
-      "id": "13ee542f-fa51-49d8-958f-58a9a4439158",
+      "id": "5ac8b077-331a-472f-8996-fea00cae80d0",
       "name": "AI Extract",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        -48,
-        304
+        -256,
+        -16
       ]
     },
     {
       "parameters": {
         "jsCode": "const responseText = $json.response || $json.content || '{}';\nlet parsed = { action_items: [], decisions: [], risks: [] };\ntry {\n  const jsonStr = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();\n  parsed = JSON.parse(jsonStr);\n} catch (e) {}\n\nreturn { json: parsed };"
       },
-      "id": "ed831d0c-f797-434c-85b9-5de0af348b55",
+      "id": "750e3228-068c-4a8f-af7d-3c460965787d",
       "name": "Parse Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        160,
-        304
+        -48,
+        -16
       ]
     },
     {
@@ -86,34 +58,32 @@
           "number": [
             {
               "value1": "={{ $json.action_items ? $json.action_items.length : 0 }}",
-              "operation": "larger",
-              "value2": 0
+              "operation": "larger"
             }
           ]
         }
       },
-      "id": "d2b627c9-560e-4914-a8ba-0c32efda1bc7",
+      "id": "dde04452-f674-4d4e-a6f0-66c462742fb2",
       "name": "IF has actions",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        368,
-        304
+        160,
+        -16
       ]
     },
     {
       "parameters": {
-        "operation": "splitOutItems",
         "fieldToSplitOut": "action_items",
         "options": {}
       },
-      "id": "8ec612c2-01a9-4585-8830-d578ac2c0995",
+      "id": "bdf90d60-4ab5-4241-a793-55ca6dbb38b2",
       "name": "Split Action Items",
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 1,
       "position": [
-        560,
-        192
+        352,
+        -128
       ]
     },
     {
@@ -121,55 +91,26 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "39de439c-254b-456d-a623-251a2f4970c1",
+      "id": "db8f7ae4-ec4b-4462-92ae-c97182b5a00d",
       "name": "Create Tasks",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 1,
       "position": [
-        768,
-        192
+        560,
+        -128
       ]
     },
     {
       "parameters": {
-        "operation": "insert",
-        "tableId": "tasks",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "title",
-              "fieldValue": "={{ $json.description ? $json.description.substring(0, 50) + '...' : 'New Action Item' }}"
-            },
-            {
-              "fieldId": "description",
-              "fieldValue": "={{ $json.description }}"
-            },
-            {
-              "fieldId": "priority",
-              "fieldValue": "={{ $json.priority || 'medium' }}"
-            },
-            {
-              "fieldId": "source_event_id",
-              "fieldValue": "={{ $('When Executed by Another Workflow').first().json.meeting_metadata?.title || 'Unknown Meeting' }}"
-            },
-            {
-              "fieldId": "deadline",
-              "fieldValue": "={{ $json.deadline }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "open"
-            }
-          ]
-        }
+        "operation": "insert"
       },
-      "id": "d3cca000-540c-4286-bef3-d78f9653a2d6",
+      "id": "ab49f5e3-ceba-4a43-95c0-b56ce4b163d2",
       "name": "Insert Task",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        960,
-        192
+        752,
+        -128
       ],
       "credentials": {
         "supabaseApi": {
@@ -182,13 +123,13 @@
       "parameters": {
         "jsCode": "const parsed = $('Parse Results').first().json;\n\nlet taskIds = [];\ntry {\n  const supabaseItems = $('Insert Task').all();\n  if (supabaseItems && supabaseItems.length > 0) {\n    taskIds = supabaseItems.map(item => item.json.id).filter(id => id !== undefined);\n  }\n} catch(e) {}\n\nreturn {\n  json: {\n    action_items_count: parsed.action_items ? parsed.action_items.length : 0,\n    decisions_count: parsed.decisions ? parsed.decisions.length : 0,\n    risks_count: parsed.risks ? parsed.risks.length : 0,\n    task_ids: taskIds\n  }\n};"
       },
-      "id": "ac5f8b81-9e03-48e7-9711-6100e254af9f",
+      "id": "a7df225e-8a92-42fd-800f-3a48efda252d",
       "name": "Return Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
-        400
+        752,
+        80
       ]
     },
     {
@@ -201,10 +142,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -480,
-        160
+        -688,
+        -160
       ],
-      "id": "581bacb5-c9f2-46a2-96c9-d984c2d8ada0",
+      "id": "f11c8ba4-0135-4ff7-b0d5-776cc9084df7",
       "name": "Sticky Note1"
     }
   ],
@@ -291,13 +232,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Return Results",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -313,17 +247,16 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "timeSavedMode": "fixed",
     "errorWorkflow": "Fa1qAUIxfJj6SjfY",
     "callerPolicy": "workflowsFromSameOwner",
-    "executionTimeout": -1,
     "availableInMCP": false
   },
-  "versionId": "89bb0d36-cefc-419c-9414-d4c1389ff5af",
+  "versionId": "12b6fce0-698f-4163-a0b5-081c63c8b408",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

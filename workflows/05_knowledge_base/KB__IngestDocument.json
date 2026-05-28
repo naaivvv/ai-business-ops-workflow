@@ -11,35 +11,42 @@
             }
           ]
         },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1AcOJD5A3-Hap_mLJuMtWXHvn0sVx_NBd",
+          "mode": "id"
+        },
         "event": "fileCreated",
-        "folderId": "YOUR_FOLDER_ID"
+        "options": {}
       },
-      "id": "trigger",
+      "id": "75988ad2-85d2-46f8-9250-5b2afbf18853",
       "name": "Google Drive Trigger",
       "type": "n8n-nodes-base.googleDriveTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        1296,
+        80
       ],
       "credentials": {
-        "googleApi": {
-          "id": "Google Business Ops",
-          "name": "Google Business Ops"
+        "googleDriveOAuth2Api": {
+          "id": "P4ItnczlmD9WHDuQ",
+          "name": "Google Drive OAuth2 API"
         }
       }
     },
     {
       "parameters": {
-        "workflowId": "UTIL__Deduplicate"
+        "workflowId": "rIRBjduPjTFXnn81",
+        "options": {}
       },
-      "id": "node_1",
+      "id": "023b35ad-b8da-4f2e-a680-613aa22c4fca",
       "name": "Deduplicate",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        200,
-        0
+        1504,
+        80
       ]
     },
     {
@@ -53,32 +60,33 @@
           ]
         }
       },
-      "id": "node_2",
+      "id": "2f297355-4c32-4ad1-86ec-c1ebeb806bc0",
       "name": "Skip if Duplicate",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        400,
-        0
+        1696,
+        80
       ]
     },
     {
       "parameters": {
         "operation": "download",
-        "fileId": "={{ $('Google Drive Trigger').item.json.id }}"
+        "fileId": "={{ $('Google Drive Trigger').item.json.id }}",
+        "options": {}
       },
-      "id": "node_3",
+      "id": "dd25e904-f3d1-461e-b23c-0bc35c5e310e",
       "name": "Download File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 2,
       "position": [
-        600,
-        100
+        1904,
+        192
       ],
       "credentials": {
-        "googleApi": {
-          "id": "Google Business Ops",
-          "name": "Google Business Ops"
+        "googleDriveOAuth2Api": {
+          "id": "P4ItnczlmD9WHDuQ",
+          "name": "Google Drive OAuth2 API"
         }
       }
     },
@@ -86,26 +94,26 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  let text = '';\n  const mimeType = item.json.mimeType || $('Google Drive Trigger').item.json.mimeType;\n  \n  if (mimeType === 'application/vnd.google-apps.document' || mimeType === 'text/plain') {\n    // Text directly from Drive\n    if (item.binary && item.binary.data) {\n       text = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n    }\n  }\n  item.json.extracted_text = text;\n  item.json.source_type = mimeType === 'application/pdf' ? 'pdf' : \n                         (mimeType === 'application/vnd.google-apps.document' ? 'google_doc' : \n                         (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'docx' : 'unknown'));\n  item.json.title = $('Google Drive Trigger').item.json.name;\n  item.json.source_file_id = $('Google Drive Trigger').item.json.id;\n  return item;\n});"
       },
-      "id": "node_4",
+      "id": "86233608-63c5-4b6a-a320-40669f692130",
       "name": "Extract Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        800,
-        100
+        2096,
+        192
       ]
     },
     {
       "parameters": {
         "jsCode": "const crypto = require('crypto');\nconst items = $input.all();\n\nreturn items.map(item => {\n  const text = item.json.extracted_text || '';\n  const hash = crypto.createHash('sha256').update(text).digest('hex');\n  item.json.content_hash = hash;\n  return item;\n});"
       },
-      "id": "node_5",
+      "id": "9d5e1c63-b2ae-4199-961a-0c0cc43bfdd5",
       "name": "Compute Content Hash",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1000,
-        100
+        2304,
+        192
       ]
     },
     {
@@ -117,24 +125,24 @@
           "conditions": [
             {
               "keyName": "source_file_id",
-              "condition": "equals",
+              "condition": "eq",
               "keyValue": "={{ $json.source_file_id }}"
             }
           ]
         }
       },
-      "id": "node_6",
+      "id": "3da2f628-f118-4f75-b34a-f779a1f11aba",
       "name": "Check Existing Document",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1200,
-        100
+        2496,
+        192
       ],
       "credentials": {
         "supabaseApi": {
-          "id": "Supabase API",
-          "name": "Supabase API"
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
         }
       }
     },
@@ -149,13 +157,13 @@
           ]
         }
       },
-      "id": "node_7",
+      "id": "c2aaa0c6-f522-4859-a219-e47a2d301c67",
       "name": "Document Changed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        1400,
-        100
+        2704,
+        192
       ]
     },
     {
@@ -166,96 +174,64 @@
           "conditions": [
             {
               "keyName": "document_id",
-              "condition": "equals",
+              "condition": "eq",
               "keyValue": "={{ $json.id }}"
             }
           ]
         }
       },
-      "id": "node_8",
+      "id": "bdc4caca-db8e-415a-866e-75cea222ff4d",
       "name": "Delete Old Embeddings Metadata",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1600,
-        100
+        2896,
+        192
       ],
       "credentials": {
         "supabaseApi": {
-          "id": "Supabase API",
-          "name": "Supabase API"
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "documents",
-        "matchColumns": [
-          "content_hash"
-        ],
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "title",
-              "fieldValue": "={{ $('Compute Content Hash').item.json.title }}"
-            },
-            {
-              "fieldId": "source_type",
-              "fieldValue": "={{ $('Compute Content Hash').item.json.source_type }}"
-            },
-            {
-              "fieldId": "source_url",
-              "fieldValue": "={{ $('Google Drive Trigger').item.json.webViewLink }}"
-            },
-            {
-              "fieldId": "source_file_id",
-              "fieldValue": "={{ $('Compute Content Hash').item.json.source_file_id }}"
-            },
-            {
-              "fieldId": "content_hash",
-              "fieldValue": "={{ $('Compute Content Hash').item.json.content_hash }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "processing"
-            }
-          ]
-        }
+        "operation": "upsert"
       },
-      "id": "node_9",
+      "id": "7c691569-b289-45cb-a5ab-e7ffbb04717a",
       "name": "Upsert Document",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1800,
-        100
+        3104,
+        192
       ],
       "credentials": {
         "supabaseApi": {
-          "id": "Supabase API",
-          "name": "Supabase API"
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
-        "workflowId": "KB__ChunkAndEmbed"
+        "workflowId": "3zE30DDyaAnXJNPS",
+        "options": {}
       },
-      "id": "node_10",
+      "id": "9217751e-8082-48d2-9c99-60504ff91912",
       "name": "Chunk and Embed",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        2000,
-        100
+        3296,
+        192
       ]
     },
     {
       "parameters": {
         "operation": "update",
         "tableId": "documents",
-        "updateKey": "id",
         "fieldsUi": {
           "fieldValues": [
             {
@@ -273,35 +249,53 @@
           ]
         }
       },
-      "id": "node_11",
+      "id": "6d99b62b-62e4-4ac4-b093-47e01536dece",
       "name": "Mark Complete",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2200,
-        100
+        3504,
+        192
       ],
       "credentials": {
         "supabaseApi": {
-          "id": "Supabase API",
-          "name": "Supabase API"
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
-        "workflowId": "UTIL__WriteAuditLog"
+        "workflowId": "jCqmfSwQOsGcrJDa",
+        "options": {}
       },
-      "id": "node_12",
+      "id": "3b4e452a-89ec-4fd7-b6ef-ee616a763a88",
       "name": "Audit Log",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        2400,
-        100
+        3696,
+        192
       ]
+    },
+    {
+      "parameters": {
+        "content": "## Ingest Document\n",
+        "height": 416,
+        "width": 2672,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        -16
+      ],
+      "id": "462dd7f8-5abb-45f9-be94-f4630c1c02d6",
+      "name": "Sticky Note1"
     }
   ],
+  "pinData": {},
   "connections": {
     "Google Drive Trigger": {
       "main": [
@@ -438,7 +432,20 @@
       ]
     }
   },
+  "active": false,
   "settings": {
-    "errorWorkflow": "ERROR__GlobalHandler"
-  }
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "6b0c3161-833d-4784-a091-396d5f5d15ea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "TEplz47oyEqE7CKz",
+  "tags": []
 }

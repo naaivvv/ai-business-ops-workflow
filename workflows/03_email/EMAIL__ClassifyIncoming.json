@@ -10,22 +10,20 @@
             }
           ]
         },
-        "filters": {},
-        "simple": true,
-        "options": {}
+        "filters": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000001",
+      "id": "42c0f9e7-6191-4a60-80b0-ec38d8218a08",
       "name": "Gmail Trigger",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.3,
       "position": [
-        260,
-        0
+        -144,
+        -32
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "YOUR_GMAIL_CREDENTIAL_ID",
-          "name": "Google Business Ops"
+          "id": "vsyBDhf8udtZ96ed",
+          "name": "Gmail OAuth2 API"
         }
       }
     },
@@ -33,28 +31,40 @@
       "parameters": {
         "jsCode": "const email = $input.first().json;\n\nreturn [{\n  json: {\n    source: \"gmail\",\n    dedup_key: email.id,\n    event_type: \"email_incoming\"\n  }\n}];"
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000002",
+      "id": "dfc8078c-5e52-45e0-99fb-6dbd0a27851c",
       "name": "Prepare Dedup Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
-        0
+        64,
+        -32
       ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": "={{ $env.UTIL_DEDUPLICATE_ID || 'PLACEHOLDER_UTIL_DEDUPLICATE' }}",
+        "workflowId": {
+          "__rl": true,
+          "value": "rIRBjduPjTFXnn81",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/rIRBjduPjTFXnn81"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
         "options": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000003",
+      "id": "b1de319b-7826-4bb4-b82d-811b8bd0d01c",
       "name": "Deduplicate",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        700,
-        0
+        288,
+        -32
       ]
     },
     {
@@ -63,7 +73,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -80,61 +91,72 @@
         },
         "options": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000004",
+      "id": "fc6ccab7-a7bd-482b-be03-b8d369a86e9f",
       "name": "Skip if Duplicate?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        920,
-        0
+        512,
+        -32
       ]
     },
     {
       "parameters": {
         "jsCode": "const email = $('Gmail Trigger').first().json;\nconst dedup = $('Deduplicate').first().json;\n\n// Extract sender\nconst sender = email.from || '';\nconst subject = email.subject || '(no subject)';\n\n// Get body text, strip HTML if needed\nlet body = email.textPlain || email.text || '';\nif (!body && email.textHtml) {\n  body = email.textHtml.replace(/<[^>]*>/g, '').replace(/\\s+/g, ' ').trim();\n}\nif (!body && email.html) {\n  body = email.html.replace(/<[^>]*>/g, '').replace(/\\s+/g, ' ').trim();\n}\n\n// Truncate body to prevent token overflow (first 3000 chars)\nconst truncatedBody = body.length > 3000\n  ? body.substring(0, 3000) + '...'\n  : body;\n\nreturn [{\n  json: {\n    // Email metadata\n    sender: sender,\n    subject: subject,\n    body: truncatedBody,\n    receivedDate: email.date || new Date().toISOString(),\n    messageId: email.id || '',\n    threadId: email.threadId || '',\n    hasAttachments: Array.isArray(email.attachments) && email.attachments.length > 0,\n    event_id: dedup.event_id,\n    // AI call parameters (passed through to UTIL__AICall)\n    prompt: `Classify the following email.\\n\\nFrom: ${sender}\\nSubject: ${subject}\\nBody: ${truncatedBody}\\n\\nRespond with valid JSON only (no markdown, no code fences):\\n{\\n  \"category\": \"<one of: inquiry, support, sales, internal, urgent, spam>\",\\n  \"urgency\": \"<one of: high, medium, low>\",\\n  \"confidence\": <number 0.0 to 1.0>,\\n  \"summary\": \"<brief 1-sentence summary>\",\\n  \"suggested_department\": \"<one of: sales, support, engineering, management, hr>\"\\n}`,\n    system_message: \"You are an email classifier for a business operations system. Analyze the email and classify it accurately. Be conservative with urgency — only mark 'high' for time-sensitive matters. Always respond with valid JSON only.\",\n    model_preference: \"fast\",\n    output_format: \"json\"\n  }\n}];"
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000005",
+      "id": "2fb15e96-3350-4bc0-a0e4-69956464dda1",
       "name": "Extract Metadata",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        160
+        736,
+        128
       ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": "={{ $env.UTIL_AICALL_ID || 'PLACEHOLDER_UTIL_AICALL' }}",
+        "workflowId": {
+          "__rl": true,
+          "value": "n8dUKBJ3yMSedWTk",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/n8dUKBJ3yMSedWTk"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
         "options": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000006",
+      "id": "e618f97c-f945-41a0-b58a-cfc140166043",
       "name": "AI Classify",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1360,
-        160
+        944,
+        128
       ]
     },
     {
       "parameters": {
         "jsCode": "const aiResponse = $input.first().json;\nconst metadata = $('Extract Metadata').first().json;\n\n// Parse the AI classification response\nlet classification;\ntry {\n  const responseText = aiResponse.response || aiResponse.text || JSON.stringify(aiResponse);\n  // Clean potential markdown code fences\n  const cleaned = responseText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  classification = typeof cleaned === 'object' ? cleaned : JSON.parse(cleaned);\n} catch (e) {\n  // Fallback if parsing fails\n  classification = {\n    category: 'internal',\n    urgency: 'medium',\n    confidence: 0.0,\n    summary: 'Classification failed — manual review required',\n    suggested_department: 'support'\n  };\n}\n\n// Validate and normalize\nconst validCategories = ['inquiry', 'support', 'sales', 'internal', 'urgent', 'spam'];\nconst validUrgencies = ['high', 'medium', 'low'];\nconst validDepts = ['sales', 'support', 'engineering', 'management', 'hr'];\n\nconst category = validCategories.includes(classification.category)\n  ? classification.category : 'internal';\nconst urgency = validUrgencies.includes(classification.urgency)\n  ? classification.urgency : 'medium';\nconst confidence = typeof classification.confidence === 'number'\n  ? Math.max(0, Math.min(1, classification.confidence)) : 0.0;\nconst suggested_department = validDepts.includes(classification.suggested_department)\n  ? classification.suggested_department : 'support';\n\nreturn [{\n  json: {\n    // Email metadata (carried forward)\n    sender: metadata.sender,\n    subject: metadata.subject,\n    body: metadata.body,\n    receivedDate: metadata.receivedDate,\n    messageId: metadata.messageId,\n    threadId: metadata.threadId,\n    hasAttachments: metadata.hasAttachments,\n    event_id: metadata.event_id,\n    // Classification results\n    category: category,\n    urgency: urgency,\n    confidence: confidence,\n    summary: classification.summary || '',\n    suggested_department: suggested_department,\n    // Full classification object for storage\n    classification: {\n      category, urgency, confidence,\n      summary: classification.summary || '',\n      suggested_department\n    },\n    // AI metadata\n    model_used: aiResponse.model_used || null,\n    ai_tokens_input: aiResponse.tokens_input || null,\n    ai_tokens_output: aiResponse.tokens_output || null,\n    ai_latency_ms: aiResponse.latency_ms || null\n  }\n}];"
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000007",
+      "id": "7a69558a-966f-4376-855e-e69938953b21",
       "name": "Parse Classification",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1580,
-        160
+        1168,
+        128
       ]
     },
     {
       "parameters": {
         "operation": "update",
         "tableId": "events",
-        "matchingColumns": "id",
         "fieldsUi": {
           "fieldValues": [
             {
@@ -156,13 +178,13 @@
           ]
         }
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000008",
+      "id": "fd551de9-1904-4200-9bf1-884ede1c5821",
       "name": "Update Event",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1800,
-        160
+        1392,
+        128
       ],
       "credentials": {
         "supabaseApi": {
@@ -175,28 +197,40 @@
       "parameters": {
         "jsCode": "const data = $('Parse Classification').first().json;\n\n// Map department to Slack channel\n// Initially all go to #email-routing — expand per-department later\nconst departmentChannels = {\n  sales: '#email-routing',\n  support: '#email-routing',\n  engineering: '#email-routing',\n  management: '#email-routing',\n  hr: '#email-routing'\n};\n\nconst urgencyEmoji = {\n  high: '🔴',\n  medium: '🟡',\n  low: '🟢'\n};\n\nconst channel = departmentChannels[data.suggested_department] || '#email-routing';\nconst emoji = urgencyEmoji[data.urgency] || '⚪';\n\nreturn [{\n  json: {\n    channel: channel,\n    message: `📧 *New Email Classified*\\n*From:* ${data.sender}\\n*Subject:* ${data.subject}\\n*Category:* ${data.category}\\n*Urgency:* ${emoji} ${data.urgency} (confidence: ${(data.confidence * 100).toFixed(0)}%)\\n*Department:* ${data.suggested_department}\\n*Summary:* ${data.summary}`\n  }\n}];"
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000009",
+      "id": "acb68c1d-99d2-4d48-b406-41c0cc08c1cf",
       "name": "Route to Slack",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2020,
-        40
+        1616,
+        0
       ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": "={{ $env.UTIL_SENDSLACKMESSAGE_ID || 'PLACEHOLDER_UTIL_SENDSLACKMESSAGE' }}",
+        "workflowId": {
+          "__rl": true,
+          "value": "nERkPtt59rc5Gfbm",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/nERkPtt59rc5Gfbm"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
         "options": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000010",
+      "id": "e1fc6660-9b91-4625-a341-98981e3d29b5",
       "name": "Route Notification",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        2240,
-        40
+        1840,
+        0
       ]
     },
     {
@@ -205,7 +239,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -222,26 +257,26 @@
         },
         "options": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000011",
+      "id": "aa40f7ea-7bce-4ea7-a7f5-6606b000c6e8",
       "name": "Low Confidence?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2460,
-        40
+        2064,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = $('Parse Classification').first().json;\n\n// Flag this email for human review due to low AI confidence\nreturn [{\n  json: {\n    flagged: true,\n    reason: 'low_confidence',\n    confidence: data.confidence,\n    event_id: data.event_id,\n    sender: data.sender,\n    subject: data.subject,\n    category: data.category,\n    message: `⚠️ Low confidence classification (${(data.confidence * 100).toFixed(0)}%) needs human review.\\nFrom: ${data.sender}\\nSubject: ${data.subject}\\nCategory: ${data.category}`\n  }\n}];"
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000012",
+      "id": "de3e2fc3-bf7d-4429-afd4-b387eaf2b1a2",
       "name": "Flag for Review",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2680,
-        -80
+        2272,
+        -112
       ]
     },
     {
@@ -250,7 +285,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -276,70 +312,110 @@
         },
         "options": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000013",
+      "id": "3b58560a-7749-42a5-afdf-0bcf18f5b5a9",
       "name": "Should Generate Draft?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2680,
-        160
+        2272,
+        128
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = $('Parse Classification').first().json;\n\n// Prepare input for EMAIL__GenerateDraft sub-workflow\nreturn [{\n  json: {\n    email_body: data.body,\n    email_subject: data.subject,\n    sender: data.sender,\n    classification: data.classification,\n    threadId: data.threadId,\n    messageId: data.messageId,\n    event_id: data.event_id\n  }\n}];"
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000014",
+      "id": "ce8bd65b-e8a2-4990-a94a-63cad3cad934",
       "name": "Prepare Draft Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2900,
-        40
+        2496,
+        0
       ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": "={{ $env.EMAIL_GENERATEDRAFT_ID || 'PLACEHOLDER_EMAIL_GENERATEDRAFT' }}",
+        "workflowId": {
+          "__rl": true,
+          "value": "zFwK1eHHECz9VrHm",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/zFwK1eHHECz9VrHm"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
         "options": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000015",
+      "id": "6279ed12-b7d8-4ace-b224-885319eec4e1",
       "name": "Generate Draft",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        3120,
-        40
+        2720,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = $('Parse Classification').first().json;\n\n// Prepare audit log input\nreturn [{\n  json: {\n    workflow_name: \"EMAIL__ClassifyIncoming\",\n    execution_id: $execution.id,\n    log_type: \"action\",\n    action: \"email_classified\",\n    input_payload: {\n      sender: data.sender,\n      subject: data.subject,\n      messageId: data.messageId\n    },\n    output_payload: data.classification,\n    model: data.model_used,\n    tokens_input: data.ai_tokens_input,\n    tokens_output: data.ai_tokens_output,\n    latency_ms: data.ai_latency_ms,\n    status: \"success\"\n  }\n}];"
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000016",
+      "id": "aaece370-ba94-4c25-8ee8-40e450374b5d",
       "name": "Prepare Audit",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2020,
-        340
+        1616,
+        304
       ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": "={{ $env.UTIL_WRITEAUDITLOG_ID || 'PLACEHOLDER_UTIL_WRITEAUDITLOG' }}",
+        "workflowId": {
+          "__rl": true,
+          "value": "jCqmfSwQOsGcrJDa",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/jCqmfSwQOsGcrJDa"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
         "options": {}
       },
-      "id": "e3f4a5b6-3333-4ccc-dddd-300000000017",
+      "id": "5a7166d8-e145-4edb-9bed-427d91ec451a",
       "name": "Audit Log",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        2240,
-        340
+        1840,
+        304
       ]
+    },
+    {
+      "parameters": {
+        "content": "## Classify Incoming Email\n\n",
+        "height": 592,
+        "width": 3248,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -144
+      ],
+      "id": "2ddd5cbc-840a-4c36-bb07-0371f81633d8",
+      "name": "Sticky Note3"
     }
   ],
   "pinData": {},
@@ -486,8 +562,7 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "Prepare Draft Input": {
@@ -516,13 +591,16 @@
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "errorWorkflow": "CpXv8Are7dDLolBo"
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "versionId": "00000000-0000-0000-0000-000000000003",
+  "versionId": "53a481c7-24f8-4ee4-b996-3443cdc29bdc",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
   },
-  "id": "",
+  "id": "zfRtOrxAsJjJ2UXx",
   "tags": []
 }

@@ -1,6 +1,6 @@
-# PROMPT.md — n8n Workflow Build Prompts
+﻿# PROMPT.md â€” n8n Workflow Build Prompts
 
-> **How to use this file:** Each phase below contains numbered prompts. Use each prompt to build one n8n workflow (or complete one setup task). Prompts are ordered by dependency — complete them in sequence. Each prompt includes the external setup steps required before building in n8n.
+> **How to use this file:** Each phase below contains numbered prompts. Use each prompt to build one n8n workflow (or complete one setup task). Prompts are ordered by dependency â€” complete them in sequence. Each prompt includes the external setup steps required before building in n8n.
 
 ---
 
@@ -10,26 +10,26 @@
 
 | Component | Where It Runs | URL |
 |-----------|--------------|-----|
-| **n8n** | ☁️ n8n Cloud | `https://edwin-bayog.app.n8n.cloud/` |
-| **PostgreSQL & Vectors** | ☁️ Supabase | Project Dashboard |
+| **n8n** | â˜ï¸ n8n Cloud | `https://edwin-bayog.app.n8n.cloud/` |
+| **PostgreSQL & Vectors** | â˜ï¸ Supabase | Project Dashboard |
 
 ### What This Means
 
-- **Workflows are built in n8n Cloud** — open `https://edwin-bayog.app.n8n.cloud/` to create and manage workflows.
-- **Supabase handles all data** — PostgreSQL and pgvector embeddings are fully managed in the cloud. No local Docker containers are required.
-- **Google OAuth is simpler** — n8n Cloud includes pre-verified Google integrations, so you may not need to create your own Google Cloud OAuth app. If n8n Cloud's built-in Google credential works, skip PROMPT 0.2's Google Cloud Console steps and use n8n's built-in OAuth flow instead.
-- **Webhook URLs use your cloud domain** — all webhook endpoints will be at `https://edwin-bayog.app.n8n.cloud/webhook/...` (publicly accessible, no tunnel needed).
+- **Workflows are built in n8n Cloud** â€” open `https://edwin-bayog.app.n8n.cloud/` to create and manage workflows.
+- **Supabase handles all data** â€” PostgreSQL and pgvector embeddings are fully managed in the cloud. No local Docker containers are required.
+- **Google OAuth is simpler** â€” n8n Cloud includes pre-verified Google integrations, so you may not need to create your own Google Cloud OAuth app. If n8n Cloud's built-in Google credential works, skip PROMPT 0.2's Google Cloud Console steps and use n8n's built-in OAuth flow instead.
+- **Webhook URLs use your cloud domain** â€” all webhook endpoints will be at `https://edwin-bayog.app.n8n.cloud/webhook/...` (publicly accessible, no tunnel needed).
 - **Execution links in Slack alerts** point to `https://edwin-bayog.app.n8n.cloud/workflow/executions/...`.
 
 ---
 
-# PHASE 0 — External Service Setup (Before Touching n8n)
+# PHASE 0 â€” External Service Setup (Before Touching n8n)
 
-Complete ALL of these setup tasks before opening n8n. Each section is a standal## PROMPT 0.1 — Supabase Setup (Database & Vector Store)
+Complete ALL of these setup tasks before opening n8n. Each section is a standal## PROMPT 0.1 â€” Supabase Setup (Database & Vector Store)
 
 > **Goal:** Create a Supabase project and get your PostgreSQL connection credentials.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -69,18 +69,18 @@ SLACK_BOT_TOKEN=
 - [ ] Supabase project is active
 - [ ] Database connection string is saved securely
 
-✂️ **TO HERE** ✂️] You can log into your n8n Cloud account
+âœ‚ï¸ **TO HERE** âœ‚ï¸] You can log into your n8n Cloud account
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 0.2 — Google Cloud OAuth Setup
+## PROMPT 0.2 â€” Google Cloud OAuth Setup
 
 > **Goal:** Create Google Cloud credentials for Gmail, Drive, Docs, and Calendar access.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -89,17 +89,17 @@ SLACK_BOT_TOKEN=
 
 1. **Go to Google Cloud Console:** https://console.cloud.google.com/
 2. **Create a new project** (or select existing):
-   - Click project dropdown → "New Project"
+   - Click project dropdown â†’ "New Project"
    - Name: `n8n-business-ops`
    - Click "Create"
-3. **Enable APIs** — Go to "APIs & Services" → "Library" and enable:
+3. **Enable APIs** â€” Go to "APIs & Services" â†’ "Library" and enable:
    - Gmail API
    - Google Drive API
    - Google Docs API
    - Google Calendar API
    - Google Sheets API
 4. **Create OAuth Consent Screen:**
-   - Go to "APIs & Services" → "OAuth consent screen"
+   - Go to "APIs & Services" â†’ "OAuth consent screen"
    - User Type: **External** (or Internal if using Google Workspace)
    - App name: `n8n Business Operations`
    - User support email: your email
@@ -113,8 +113,8 @@ SLACK_BOT_TOKEN=
    - Test users: Add your email address
    - **CRITICAL:** After testing is complete, publish the app to **Production** mode. Testing-mode tokens expire every 7 days and will silently break your Gmail/Drive triggers.
 5. **Create OAuth Client ID:**
-   - Go to "APIs & Services" → "Credentials"
-   - Click "Create Credentials" → "OAuth Client ID"
+   - Go to "APIs & Services" â†’ "Credentials"
+   - Click "Create Credentials" â†’ "OAuth Client ID"
    - Application type: **Web application**
    - Name: `n8n OAuth`
    - Authorized redirect URIs:
@@ -128,34 +128,34 @@ SLACK_BOT_TOKEN=
    GOOGLE_CLIENT_SECRET=your_client_secret_here
    ```
 
-> **n8n Cloud Shortcut:** n8n Cloud includes pre-verified Google integrations. Try creating the Google credential in n8n first using the built-in OAuth flow — if it works and requests all the scopes you need (Gmail, Drive, Docs, Calendar, Sheets), you can skip steps 1–5 above entirely. Only create your own Google Cloud project if the built-in credential is missing scopes.
+> **n8n Cloud Shortcut:** n8n Cloud includes pre-verified Google integrations. Try creating the Google credential in n8n first using the built-in OAuth flow â€” if it works and requests all the scopes you need (Gmail, Drive, Docs, Calendar, Sheets), you can skip steps 1â€“5 above entirely. Only create your own Google Cloud project if the built-in credential is missing scopes.
 
 ### Configure in n8n
 
 1. Open n8n at `https://edwin-bayog.app.n8n.cloud/`
-2. Go to **Credentials** → **Add Credential**
+2. Go to **Credentials** â†’ **Add Credential**
 3. Search for "Google OAuth2 API"
-4. **Try the built-in OAuth first** — if n8n Cloud offers a "Sign in with Google" button without asking for Client ID/Secret, use that.
+4. **Try the built-in OAuth first** â€” if n8n Cloud offers a "Sign in with Google" button without asking for Client ID/Secret, use that.
 5. **If custom credentials needed:** Enter your Client ID and Client Secret, then click **Sign in with Google**
-6. Save the credential — name it `Google Business Ops`
+6. Save the credential â€” name it `Google Business Ops`
 
 ### Verification Checklist
 
 - [ ] OAuth consent screen is configured with all required scopes
 - [ ] Client ID and Client Secret are saved in `.env`
 - [ ] n8n credential "Google Business Ops" is created and authorized
-- [ ] Test: Create a manual workflow with a Gmail node → it can list your inbox
+- [ ] Test: Create a manual workflow with a Gmail node â†’ it can list your inbox
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 0.3 — Slack Bot Setup
+## PROMPT 0.3 â€” Slack Bot Setup
 
 > **Goal:** Create a Slack bot with permissions to post messages to any channel.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -164,17 +164,17 @@ SLACK_BOT_TOKEN=
 
 1. **Go to Slack API:** https://api.slack.com/apps
 2. **Create New App:**
-   - Click "Create New App" → "From scratch"
+   - Click "Create New App" â†’ "From scratch"
    - App Name: `n8n Business Ops Bot`
    - Workspace: Select your workspace
 3. **Configure Bot Token Scopes:**
    - Go to "OAuth & Permissions" in the sidebar
    - Under "Bot Token Scopes", add:
-     - `chat:write` — Send messages
-     - `chat:write.public` — Send to channels without joining
-     - `channels:read` — List channels
-     - `users:read` — Look up user info
-     - `users:read.email` — Look up users by email
+     - `chat:write` â€” Send messages
+     - `chat:write.public` â€” Send to channels without joining
+     - `channels:read` â€” List channels
+     - `users:read` â€” Look up user info
+     - `users:read.email` â€” Look up users by email
 4. **Install to Workspace:**
    - Click "Install to Workspace" at the top of the "OAuth & Permissions" page
    - Authorize the requested permissions
@@ -184,18 +184,18 @@ SLACK_BOT_TOKEN=
    SLACK_BOT_TOKEN=xoxb-your-bot-token-here
    ```
 6. **Create Slack channels** for routing:
-   - `#ops-alerts` — Error notifications and escalations
-   - `#email-routing` — Email classification notifications
-   - `#meeting-summaries` — Meeting transcript summaries
-   - `#executive-updates` — Daily/weekly reports
-   - `#task-reminders` — Task reminder notifications
+   - `#ops-alerts` â€” Error notifications and escalations
+   - `#email-routing` â€” Email classification notifications
+   - `#meeting-summaries` â€” Meeting transcript summaries
+   - `#executive-updates` â€” Daily/weekly reports
+   - `#task-reminders` â€” Task reminder notifications
 
 ### Configure in n8n
 
-1. Go to **Credentials** → **Add Credential**
+1. Go to **Credentials** â†’ **Add Credential**
 2. Search for "Slack API"
 3. Enter your Bot User OAuth Token
-4. Save — name it `Slack Business Ops Bot`
+4. Save â€” name it `Slack Business Ops Bot`
 
 ### Verification Checklist
 
@@ -205,15 +205,15 @@ SLACK_BOT_TOKEN=
 - [ ] Test: Send a test message from n8n to `#ops-alerts`
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 0.4 — OpenRouter API Key Setup
+## PROMPT 0.4 â€” OpenRouter API Key Setup
 
 > **Goal:** Get an OpenRouter API key with access to free tier models (e.g., Llama 3.3 70B, Gemini 2.5 Pro).
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -233,27 +233,27 @@ SLACK_BOT_TOKEN=
 
 ### Configure in n8n
 
-1. Go to **Credentials** → **Add Credential**
+1. Go to **Credentials** â†’ **Add Credential**
 2. Search for "Header Auth" (or use a custom OpenAI-compatible node)
 3. Enter your API key in the value field (e.g., `Bearer sk-or-v1-...`)
-4. Save — name it `OpenRouter API`
+4. Save â€” name it `OpenRouter API`
 
 ### Verification Checklist
 
 - [ ] API key saved in `.env` as `OPENROUTER_API_KEY`
 - [ ] n8n credential "OpenRouter API" is created
-- [ ] Test: Create a manual workflow with an HTTP Request node → send a test prompt to OpenRouter's `/api/v1/chat/completions` endpoint
+- [ ] Test: Create a manual workflow with an HTTP Request node â†’ send a test prompt to OpenRouter's `/api/v1/chat/completions` endpoint
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 0.5 — Hugging Face API Key Setup
+## PROMPT 0.5 â€” Hugging Face API Key Setup
 
 > **Goal:** Get a Hugging Face API key to generate embeddings via the free Inference API.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -273,10 +273,10 @@ SLACK_BOT_TOKEN=
 
 ### Configure in n8n
 
-1. Go to **Credentials** → **Add Credential**
+1. Go to **Credentials** â†’ **Add Credential**
 2. Search for "Hugging Face Inference API"
 3. Enter your Access Token
-4. Save — name it `Hugging Face Embeddings`
+4. Save â€” name it `Hugging Face Embeddings`
 
 ### Verification Checklist
 
@@ -285,15 +285,15 @@ SLACK_BOT_TOKEN=
 - [ ] Test: Send a test prompt via Hugging Face node to generate embeddings
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 0.6 — PostgreSQL Database Initialization
+## PROMPT 0.6 â€” PostgreSQL Database Initialization
 
 > **Goal:** Create all required tables from DATABASE.md in PostgreSQL.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -306,7 +306,7 @@ Execute the following SQL script in the Supabase Dashboard SQL Editor to create 
 
 ```sql
 -- ============================================
--- AI Business Operations — Database Schema
+-- AI Business Operations â€” Database Schema
 -- Auto-executed on first PostgreSQL start
 -- ============================================
 
@@ -519,15 +519,15 @@ In the Supabase Dashboard, go to **SQL Editor** and paste the entire SQL block a
 - [ ] Seed users are present
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 
 
-## PROMPT 0.8 — Google Drive Folder Structure
+## PROMPT 0.8 â€” Google Drive Folder Structure
 
 > **Goal:** Create the Drive folders that n8n will monitor for file triggers.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -538,18 +538,18 @@ In your Google Drive, create these folders:
 
 ```
 My Drive/
-├── Meeting-Transcripts/    ← Drop meeting transcripts here (Week 3)
-└── Knowledge-Base/         ← Drop organizational docs here (Week 4)
+â”œâ”€â”€ Meeting-Transcripts/    â† Drop meeting transcripts here (Week 3)
+â””â”€â”€ Knowledge-Base/         â† Drop organizational docs here (Week 4)
 ```
 
 ### Steps
 
 1. Open Google Drive (https://drive.google.com/)
-2. Click "New" → "New folder" → Name: `Meeting-Transcripts`
-3. Click "New" → "New folder" → Name: `Knowledge-Base`
+2. Click "New" â†’ "New folder" â†’ Name: `Meeting-Transcripts`
+3. Click "New" â†’ "New folder" â†’ Name: `Knowledge-Base`
 4. Note the **folder IDs** from the URL bar when you open each folder:
    - URL looks like: `https://drive.google.com/drive/folders/FOLDER_ID_HERE`
-   - Save both folder IDs — you'll need them for the Drive Trigger nodes
+   - Save both folder IDs â€” you'll need them for the Drive Trigger nodes
 
 ### Verification Checklist
 
@@ -558,22 +558,22 @@ My Drive/
 - [ ] Both folder IDs are noted for later use in n8n workflows
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 0.9 — n8n Credentials Configuration
+## PROMPT 0.9 â€” n8n Credentials Configuration
 
 > **Goal:** Set up all n8n credential entries so workflows can reference them.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
 
 ### What to do
 
-Open n8n at `https://edwin-bayog.app.n8n.cloud/` → **Credentials** and create the following:
+Open n8n at `https://edwin-bayog.app.n8n.cloud/` â†’ **Credentials** and create the following:
 
 | # | Credential Type | Name | Notes |
 |---|----------------|------|-------|
@@ -590,20 +590,20 @@ Open n8n at `https://edwin-bayog.app.n8n.cloud/` → **Credentials** and create 
 
 ---
 
-# PHASE 1 — Foundational Workflows (Week 1)
+# PHASE 1 â€” Foundational Workflows (Week 1)
 
-Build these FIRST. Every workflow in Phases 2–6 depends on these utilities.
+Build these FIRST. Every workflow in Phases 2â€“6 depends on these utilities.
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 1.1 — Build `ERROR__GlobalHandler`
+## PROMPT 1.1 â€” Build `ERROR__GlobalHandler`
 
 > **Goal:** Create the global error handler that catches failures from all workflows and sends Slack alerts.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -615,27 +615,27 @@ Create an n8n workflow named "ERROR__GlobalHandler" with the following:
 
 TRIGGER: Error Trigger node (this fires when any workflow configured to use this error handler fails)
 
-NODE 1 — Code node "Extract Error Context":
+NODE 1 â€” Code node "Extract Error Context":
 - Extract from the Error Trigger output:
-  - workflow.name → workflowName
-  - execution.id → executionId
-  - node name that failed → failedNode
-  - error message → errorMessage
+  - workflow.name â†’ workflowName
+  - execution.id â†’ executionId
+  - node name that failed â†’ failedNode
+  - error message â†’ errorMessage
 - Build a direct link to the failed execution:
   "https://edwin-bayog.app.n8n.cloud/workflow/executions/EXECUTION_ID"
   (Self-hosted: "http://localhost:5678/workflow/executions/EXECUTION_ID")
 
-NODE 2 — Slack node "Send Error Alert":
+NODE 2 â€” Slack node "Send Error Alert":
 - Credential: Slack Business Ops Bot
 - Channel: #ops-alerts
 - Message format:
-  "🚨 *Workflow Failed*
+  "ðŸš¨ *Workflow Failed*
   *Workflow:* {{ workflowName }}
   *Failed Node:* {{ failedNode }}
   *Error:* {{ errorMessage }}
   *Execution:* {{ executionLink }}"
 
-NODE 3 — Supabase node "Log Error to Dead Letter Queue":
+NODE 3 â€” Supabase node "Log Error to Dead Letter Queue":
 - Credential: Supabase API
 - Resource: Database
 - Operation: Create
@@ -649,7 +649,7 @@ Settings:
 
 ### After Building
 
-Go to **every other workflow** you create → Settings → Error Workflow → select `ERROR__GlobalHandler`.
+Go to **every other workflow** you create â†’ Settings â†’ Error Workflow â†’ select `ERROR__GlobalHandler`.
 
 ### Test
 
@@ -659,15 +659,15 @@ Go to **every other workflow** you create → Settings → Error Workflow → se
 4. Verify: Slack message appears in `#ops-alerts` AND a row appears in `workflow_logs` with `log_type = 'error'`
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 1.2 — Build `UTIL__WriteAuditLog`
+## PROMPT 1.2 â€” Build `UTIL__WriteAuditLog`
 
 > **Goal:** Create a reusable sub-workflow that writes structured log entries to the `workflow_logs` table.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -697,11 +697,11 @@ EXPECTED INPUT (JSON from caller):
   "error_message": null         // optional
 }
 
-NODE 1 — Code node "Validate Input":
+NODE 1 â€” Code node "Validate Input":
 - Check that workflow_name, log_type, and action are present
 - If missing, return error response
 
-NODE 2 — Supabase node "Insert Log":
+NODE 2 â€” Supabase node "Insert Log":
 - Credential: Supabase API
 - Resource: Database
 - Operation: Create
@@ -709,30 +709,30 @@ NODE 2 — Supabase node "Insert Log":
 - Map properties to JSON payload
 - Use parameterized query with values from the input
 
-NODE 3 — Code node "Return Result":
+NODE 3 â€” Code node "Return Result":
 - Return { success: true, log_id: result.id }
 
 SETTINGS:
-- Workflow Settings → "This workflow can be called by" → set to "Any workflow"
+- Workflow Settings â†’ "This workflow can be called by" â†’ set to "Any workflow"
 - Set Error Workflow to ERROR__GlobalHandler
 ```
 
 ### Test
 
-1. Create a temporary workflow → Execute Workflow node → select `UTIL__WriteAuditLog`
+1. Create a temporary workflow â†’ Execute Workflow node â†’ select `UTIL__WriteAuditLog`
 2. Pass test data: `{ "workflow_name": "TEST", "log_type": "audit", "action": "test_entry", "status": "success" }`
 3. Verify: Row appears in `workflow_logs` table
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 1.3 — Build `UTIL__SendSlackMessage`
+## PROMPT 1.3 â€” Build `UTIL__SendSlackMessage`
 
 > **Goal:** Create a reusable sub-workflow for sending Slack messages from any workflow.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -751,36 +751,36 @@ EXPECTED INPUT:
   "thread_ts": null     // optional: reply to thread
 }
 
-NODE 1 — Code node "Validate Input":
+NODE 1 â€” Code node "Validate Input":
 - Check channel and message are provided
 - Default channel to "#ops-alerts" if empty
 
-NODE 2 — Slack node "Send Message":
+NODE 2 â€” Slack node "Send Message":
 - Credential: Slack Business Ops Bot
 - Resource: Message
 - Operation: Send
 - Channel: {{ channel }}
 - Text: {{ message }}
-- If thread_ts is provided, set "Reply to Thread" → thread_ts
+- If thread_ts is provided, set "Reply to Thread" â†’ thread_ts
 
-NODE 3 — Code node "Return Result":
+NODE 3 â€” Code node "Return Result":
 - Return { success: true, message_ts: result.ts, channel: result.channel }
 
 SETTINGS:
-- "This workflow can be called by" → "Any workflow"
-- Error Workflow → ERROR__GlobalHandler
+- "This workflow can be called by" â†’ "Any workflow"
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 1.4 — Build `UTIL__AICall`
+## PROMPT 1.4 â€” Build `UTIL__AICall`
 
 > **Goal:** Create the centralized AI API call handler with model selection, failover, and usage logging.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -801,24 +801,24 @@ EXPECTED INPUT:
   "max_tokens": 1000                // optional
 }
 
-NODE 1 — Code node "Select Model":
+NODE 1 â€” Code node "Select Model":
 - Based on model_preference:
-  - "fast" → primary: "meta-llama/llama-3.3-70b-instruct:free", failover: "google/gemini-2.5-pro:free"
-  - "large-context" → primary: "google/gemini-2.5-pro:free", failover: "meta-llama/llama-3.3-70b-instruct:free"
-  - "embedding" → primary: "sentence-transformers/all-MiniLM-L6-v2", failover: null
+  - "fast" â†’ primary: "meta-llama/llama-3.3-70b-instruct:free", failover: "google/gemini-2.5-pro:free"
+  - "large-context" â†’ primary: "google/gemini-2.5-pro:free", failover: "meta-llama/llama-3.3-70b-instruct:free"
+  - "embedding" â†’ primary: "sentence-transformers/all-MiniLM-L6-v2", failover: null
 - Record start timestamp for latency calculation
 
-NODE 2 — IF node "Is Embedding?":
+NODE 2 â€” IF node "Is Embedding?":
 - Route to embedding path or chat completion path
 
-NODE 3A (embedding path) — HTTP Request node "Generate Embedding (Hugging Face)":
+NODE 3A (embedding path) â€” HTTP Request node "Generate Embedding (Hugging Face)":
 - Method: POST
 - URL: `https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2`
 - Authentication: Header Auth (Credential: Hugging Face Embeddings)
 - Body: `{"inputs": ["{{ $json.prompt }}"]}`
 - Settings: Retry on Fail = true, Max Retries = 3, Wait Between Retries = exponential
 
-NODE 3B (chat path) — HTTP Request node "Chat Completion (OpenRouter)":
+NODE 3B (chat path) â€” HTTP Request node "Chat Completion (OpenRouter)":
 - Method: POST
 - URL: `https://openrouter.ai/api/v1/chat/completions`
 - Authentication: Header Auth (Credential: OpenRouter API)
@@ -834,20 +834,20 @@ NODE 3B (chat path) — HTTP Request node "Chat Completion (OpenRouter)":
 - Max Tokens: {{ max_tokens }}
 - Settings: Retry on Fail = true, Max Retries = 3
 
-NODE 4 — Code node "Calculate Usage":
+NODE 4 â€” Code node "Calculate Usage":
 - Calculate latency_ms from start timestamp
 - Extract tokens from API response (usage.prompt_tokens, usage.completion_tokens)
 - Calculate cost_usd based on model pricing:
   - Free models: $0.00
 
-NODE 5 — Execute Workflow node "Log Usage":
+NODE 5 â€” Execute Workflow node "Log Usage":
 - Call UTIL__WriteAuditLog with:
   - log_type: 'ai_call'
   - action: 'ai_completion' or 'ai_embedding'
   - model: selected model name
   - tokens_input, tokens_output, latency_ms, cost_usd
 
-NODE 6 — Code node "Return Response":
+NODE 6 â€” Code node "Return Response":
 - Return:
   {
     "response": AI_OUTPUT,
@@ -858,12 +858,12 @@ NODE 6 — Code node "Return Response":
   }
 
 ERROR HANDLING:
-- If primary model fails after 3 retries → route to failover model (HTTP Request node to OpenRouter with failover model)
-- If failover also fails → return error object, do NOT throw (let caller decide)
+- If primary model fails after 3 retries â†’ route to failover model (HTTP Request node to OpenRouter with failover model)
+- If failover also fails â†’ return error object, do NOT throw (let caller decide)
 
 SETTINGS:
-- "This workflow can be called by" → "Any workflow"
-- Error Workflow → ERROR__GlobalHandler
+- "This workflow can be called by" â†’ "Any workflow"
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 ### Note on OpenRouter Failover
@@ -871,15 +871,15 @@ SETTINGS:
 If the first HTTP request to OpenRouter fails, you can use the Error path of the node to trigger a second HTTP request with the `failover` model variable.
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 1.5 — Build `UTIL__Deduplicate`
+## PROMPT 1.5 â€” Build `UTIL__Deduplicate`
 
 > **Goal:** Create the deduplication sub-workflow that checks for and prevents duplicate event processing.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -898,11 +898,11 @@ EXPECTED INPUT:
   "event_type": "email_incoming"       // event type for the events table
 }
 
-NODE 1 — Code node "Compute Hash":
+NODE 1 â€” Code node "Compute Hash":
 - Compute SHA-256 hash of: source + "|" + dedup_key
 - Use Node.js crypto: require('crypto').createHash('sha256').update(source + '|' + dedup_key).digest('hex')
 
-NODE 2 — Supabase node "Check Existing":
+NODE 2 â€” Supabase node "Check Existing":
 - Credential: Supabase API
 - Operation: Execute Query
 - Operation: Get Many
@@ -910,39 +910,39 @@ NODE 2 — Supabase node "Check Existing":
 - Filter: dedup_hash = computed_hash
 - Return limit: 1
 
-NODE 3 — IF node "Is Duplicate?":
+NODE 3 â€” IF node "Is Duplicate?":
 - Condition: query returned rows (length > 0)
 
-NODE 4A (duplicate path) — Code node "Return Duplicate":
+NODE 4A (duplicate path) â€” Code node "Return Duplicate":
 - Return: { isDuplicate: true, existing_event_id: result[0].id }
 
-NODE 4B (new event path) — Supabase node "Insert Event":
+NODE 4B (new event path) â€” Supabase node "Insert Event":
 - Operation: Create
 - Table: events
 - Map properties: event_type, source, dedup_hash, status ('processing')
 
-NODE 5B — Code node "Return New":
+NODE 5B â€” Code node "Return New":
 - Return: { isDuplicate: false, event_id: result[0].id }
 
 SETTINGS:
-- "This workflow can be called by" → "Any workflow"
-- Error Workflow → ERROR__GlobalHandler
+- "This workflow can be called by" â†’ "Any workflow"
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 ---
 
-# PHASE 2 — Email Intelligence (Week 2)
+# PHASE 2 â€” Email Intelligence (Week 2)
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 2.1 — Build `EMAIL__ClassifyIncoming`
+## PROMPT 2.1 â€” Build `EMAIL__ClassifyIncoming`
 
 > **Goal:** Build the email classification workflow with Gmail trigger, AI classification, deduplication, and Slack routing.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -958,16 +958,16 @@ TRIGGER: Gmail Trigger node
 - Labels: INBOX
 - Trigger on: New emails only
 
-NODE 1 — Execute Workflow node "Deduplicate":
+NODE 1 â€” Execute Workflow node "Deduplicate":
 - Call: UTIL__Deduplicate
 - Input: { source: "gmail", dedup_key: "{{ $json.id }}", event_type: "email_incoming" }
 
-NODE 2 — IF node "Skip if Duplicate":
+NODE 2 â€” IF node "Skip if Duplicate":
 - Condition: $json.isDuplicate === true
-- True path → end (stop processing)
-- False path → continue
+- True path â†’ end (stop processing)
+- False path â†’ continue
 
-NODE 3 — Code node "Extract Metadata":
+NODE 3 â€” Code node "Extract Metadata":
 - Extract from Gmail message:
   - sender (from field)
   - subject
@@ -977,67 +977,67 @@ NODE 3 — Code node "Extract Metadata":
   - threadId
   - hasAttachments
 
-NODE 4 — Execute Workflow node "AI Classify":
+NODE 4 â€” Execute Workflow node "AI Classify":
 - Call: UTIL__AICall
 - Input:
   {
     "prompt": "Classify the following email.\n\nFrom: {{ sender }}\nSubject: {{ subject }}\nBody: {{ body }}\n\nRespond with JSON: { \"category\": one of [inquiry, support, sales, internal, urgent, spam], \"urgency\": one of [high, medium, low], \"confidence\": 0.0-1.0, \"summary\": brief 1-sentence summary, \"suggested_department\": one of [sales, support, engineering, management, hr] }",
-    "system_message": "You are an email classifier for a business operations system. Analyze the email and classify it accurately. Be conservative with urgency — only mark 'high' for time-sensitive matters.",
+    "system_message": "You are an email classifier for a business operations system. Analyze the email and classify it accurately. Be conservative with urgency â€” only mark 'high' for time-sensitive matters.",
     "model_preference": "fast",
     "output_format": "json"
   }
 
-NODE 5 — Code node "Parse Classification":
+NODE 5 â€” Code node "Parse Classification":
 - Parse the AI JSON response
 - Extract: category, urgency, confidence, summary, suggested_department
 
-NODE 6 — Supabase node "Update Event":
+NODE 6 â€” Supabase node "Update Event":
 - Operation: Update
 - Table: events
 - Match by: id (event_id from dedup step)
 - Map properties: payload, status ('completed'), processed_at (NOW())
 
-NODE 7 — Execute Workflow node "Route Notification":
+NODE 7 â€” Execute Workflow node "Route Notification":
 - Call: UTIL__SendSlackMessage
 - Input:
   {
     "channel": map department to channel (#email-routing for all initially),
-    "message": "📧 *New Email Classified*\n*From:* {{ sender }}\n*Subject:* {{ subject }}\n*Category:* {{ category }}\n*Urgency:* {{ urgency }} ({{ confidence }})\n*Summary:* {{ summary }}"
+    "message": "ðŸ“§ *New Email Classified*\n*From:* {{ sender }}\n*Subject:* {{ subject }}\n*Category:* {{ category }}\n*Urgency:* {{ urgency }} ({{ confidence }})\n*Summary:* {{ summary }}"
   }
 
-NODE 8 — IF node "Low Confidence?":
+NODE 8 â€” IF node "Low Confidence?":
 - Condition: confidence < 0.7
-- True path → human review (log and flag)
-- False path → continue to draft generation check
+- True path â†’ human review (log and flag)
+- False path â†’ continue to draft generation check
 
-NODE 9 — IF node "Should Generate Draft?":
+NODE 9 â€” IF node "Should Generate Draft?":
 - Condition: category is 'inquiry' OR category is 'support'
-- True path → call EMAIL__GenerateDraft
-- False path → end
+- True path â†’ call EMAIL__GenerateDraft
+- False path â†’ end
 
-NODE 10 — Execute Workflow node "Generate Draft":
+NODE 10 â€” Execute Workflow node "Generate Draft":
 - Call: EMAIL__GenerateDraft
 - Input: { email_body, email_subject, sender, classification }
 
-NODE 11 — Execute Workflow node "Audit Log":
+NODE 11 â€” Execute Workflow node "Audit Log":
 - Call: UTIL__WriteAuditLog
 - Input: { workflow_name: "EMAIL__ClassifyIncoming", log_type: "action", action: "email_classified", status: "success" }
 
 SETTINGS:
-- Error Workflow → ERROR__GlobalHandler
+- Error Workflow â†’ ERROR__GlobalHandler
 - Activate this workflow when ready
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 2.2 — Build `EMAIL__GenerateDraft`
+## PROMPT 2.2 â€” Build `EMAIL__GenerateDraft`
 
 > **Goal:** Build the AI email draft generation sub-workflow with safety rails.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1057,7 +1057,7 @@ EXPECTED INPUT:
   "classification": { "category": "inquiry", "urgency": "medium" }
 }
 
-NODE 1 — Code node "PII Check":
+NODE 1 â€” Code node "PII Check":
 - Scan email_body for PII patterns:
   - SSN: /\b\d{3}-\d{2}-\d{4}\b/
   - Credit card: /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/
@@ -1065,17 +1065,17 @@ NODE 1 — Code node "PII Check":
 - If PII found, replace with [REDACTED] in the body passed to AI
 - Flag hasPII = true
 
-NODE 2 — Execute Workflow node "Generate Reply":
+NODE 2 â€” Execute Workflow node "Generate Reply":
 - Call: UTIL__AICall
 - Input:
   {
     "prompt": "Generate a professional reply draft for this email.\n\nOriginal Email:\nFrom: {{ sender }}\nSubject: {{ email_subject }}\nBody: {{ sanitized_body }}\n\nClassification: {{ category }}, Urgency: {{ urgency }}\n\nWrite a helpful, professional reply. Keep it concise. Do not include any sensitive personal information.",
-    "system_message": "You are a professional email assistant. Write clear, helpful email replies that match the business tone. Always be polite and solution-oriented. Never include information you don't have — if unsure, suggest the person contact the relevant department.",
+    "system_message": "You are a professional email assistant. Write clear, helpful email replies that match the business tone. Always be polite and solution-oriented. Never include information you don't have â€” if unsure, suggest the person contact the relevant department.",
     "model_preference": "fast",
     "output_format": "text"
   }
 
-NODE 3 — Gmail node "Create Draft":
+NODE 3 â€” Gmail node "Create Draft":
 - Credential: Google Business Ops
 - Resource: Draft
 - Operation: Create
@@ -1084,37 +1084,37 @@ NODE 3 — Gmail node "Create Draft":
 - Body: AI generated reply text
 - NOTE: This creates a DRAFT, not a sent email
 
-NODE 4 — Execute Workflow node "Notify Reviewer":
+NODE 4 â€” Execute Workflow node "Notify Reviewer":
 - Call: UTIL__SendSlackMessage
 - Input:
   {
     "channel": "#email-routing",
-    "message": "📝 *AI Draft Ready for Review*\n*To:* {{ sender }}\n*Subject:* Re: {{ email_subject }}\n*Category:* {{ category }}\n\n*Draft Preview:*\n>>> {{ first 200 chars of draft }}\n\n✅ Review and send from your Gmail Drafts folder"
+    "message": "ðŸ“ *AI Draft Ready for Review*\n*To:* {{ sender }}\n*Subject:* Re: {{ email_subject }}\n*Category:* {{ category }}\n\n*Draft Preview:*\n>>> {{ first 200 chars of draft }}\n\nâœ… Review and send from your Gmail Drafts folder"
   }
 
-NODE 5 — Execute Workflow node "Audit Log":
+NODE 5 â€” Execute Workflow node "Audit Log":
 - Call: UTIL__WriteAuditLog
 - Input: { workflow_name: "EMAIL__GenerateDraft", log_type: "action", action: "draft_created", status: "success" }
 
 SETTINGS:
-- "This workflow can be called by" → "Any workflow"
-- Error Workflow → ERROR__GlobalHandler
+- "This workflow can be called by" â†’ "Any workflow"
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 ---
 
-# PHASE 3 — Meeting Intelligence (Week 3)
+# PHASE 3 â€” Meeting Intelligence (Week 3)
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 3.1 — Build `MEET__ProcessTranscript`
+## PROMPT 3.1 â€” Build `MEET__ProcessTranscript`
 
 > **Goal:** Build the meeting transcript processor triggered by Google Drive file uploads.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1134,31 +1134,31 @@ TRIGGER: Google Drive Trigger node
 - Folder: Meeting-Transcripts (use folder ID from PROMPT 0.8)
 - Poll Times: Every 5 Minutes
 
-NODE 1 — Execute Workflow node "Deduplicate":
+NODE 1 â€” Execute Workflow node "Deduplicate":
 - Call: UTIL__Deduplicate
 - Input: { source: "drive", dedup_key: "{{ $json.id }}", event_type: "meeting_transcript" }
 
-NODE 2 — IF node "Skip if Duplicate":
-- True (duplicate) → end
-- False → continue
+NODE 2 â€” IF node "Skip if Duplicate":
+- True (duplicate) â†’ end
+- False â†’ continue
 
-NODE 3 — Google Drive node "Download File":
+NODE 3 â€” Google Drive node "Download File":
 - Credential: Google Business Ops
 - Operation: Download
 - File ID: {{ $json.id }}
 
-NODE 4 — Code node "Extract Text":
+NODE 4 â€” Code node "Extract Text":
 - Detect file type from name/mimeType:
-  - .txt → use content directly
-  - .docx → extract text (use n8n's built-in binary parsing)
-  - .vtt/.srt → strip timestamps using regex:
+  - .txt â†’ use content directly
+  - .docx â†’ extract text (use n8n's built-in binary parsing)
+  - .vtt/.srt â†’ strip timestamps using regex:
     text.replace(/\d{2}:\d{2}:\d{2}[.,]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[.,]\d{3}/g, '')
         .replace(/^\d+$/gm, '')
         .replace(/\n{3,}/g, '\n\n')
-  - Google Doc → already in text format from Drive download
+  - Google Doc â†’ already in text format from Drive download
 - Output: clean transcript text
 
-NODE 5 — Execute Workflow node "Summarize":
+NODE 5 â€” Execute Workflow node "Summarize":
 - Call: UTIL__AICall
 - Input:
   {
@@ -1168,41 +1168,41 @@ NODE 5 — Execute Workflow node "Summarize":
     "output_format": "json"
   }
 
-NODE 6 — Execute Workflow node "Extract Actions":
+NODE 6 â€” Execute Workflow node "Extract Actions":
 - Call: MEET__ExtractActions
 - Input: { transcript_text, meeting_metadata: { title, date: NOW(), filename } }
 
-NODE 7 — Google Docs node "Create Summary Doc":
+NODE 7 â€” Google Docs node "Create Summary Doc":
 - Credential: Google Business Ops
 - Operation: Create
-- Title: "Meeting Summary — {{ title }} — {{ date }}"
+- Title: "Meeting Summary â€” {{ title }} â€” {{ date }}"
 - Content: Formatted summary with key points, action items, decisions, risks
 
-NODE 8 — Execute Workflow node "Notify Team":
+NODE 8 â€” Execute Workflow node "Notify Team":
 - Call: UTIL__SendSlackMessage
 - Input:
   {
     "channel": "#meeting-summaries",
-    "message": "📋 *Meeting Summary Ready*\n*Title:* {{ title }}\n*Key Points:* {{ key_points_list }}\n*Action Items:* {{ action_count }} items created\n*Doc:* {{ google_doc_link }}"
+    "message": "ðŸ“‹ *Meeting Summary Ready*\n*Title:* {{ title }}\n*Key Points:* {{ key_points_list }}\n*Action Items:* {{ action_count }} items created\n*Doc:* {{ google_doc_link }}"
   }
 
-NODE 9 — Execute Workflow node "Audit Log":
+NODE 9 â€” Execute Workflow node "Audit Log":
 - Call: UTIL__WriteAuditLog
 
 SETTINGS:
-- Error Workflow → ERROR__GlobalHandler
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 3.2 — Build `MEET__ExtractActions`
+## PROMPT 3.2 â€” Build `MEET__ExtractActions`
 
 > **Goal:** Build the action item extraction sub-workflow.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1220,48 +1220,48 @@ EXPECTED INPUT:
   "meeting_metadata": { "title": "...", "date": "...", "filename": "..." }
 }
 
-NODE 1 — Execute Workflow node "AI Extract":
+NODE 1 â€” Execute Workflow node "AI Extract":
 - Call: UTIL__AICall
 - Input:
   {
     "prompt": "Extract action items, decisions, and risks from this meeting transcript.\n\nTranscript:\n{{ transcript_text }}\n\nRespond with JSON:\n{\n  \"action_items\": [\n    { \"description\": \"...\", \"owner\": \"person name or null\", \"deadline\": \"date or null\", \"priority\": \"high/medium/low\" }\n  ],\n  \"decisions\": [\n    { \"decision\": \"...\", \"context\": \"...\" }\n  ],\n  \"risks\": [\n    { \"risk\": \"...\", \"severity\": \"high/medium/low\" }\n  ]\n}",
-    "system_message": "You are a meeting analyst. Extract concrete, actionable items with specific owners and deadlines when mentioned. Be precise — only extract real commitments, not vague discussions.",
+    "system_message": "You are a meeting analyst. Extract concrete, actionable items with specific owners and deadlines when mentioned. Be precise â€” only extract real commitments, not vague discussions.",
     "model_preference": "fast",
     "output_format": "json"
   }
 
-NODE 2 — Code node "Parse Results":
+NODE 2 â€” Code node "Parse Results":
 - Parse action_items, decisions, risks from AI response
 
-NODE 3 — Loop node "Create Tasks":
+NODE 3 â€” Loop node "Create Tasks":
 - For each action_item:
   - Supabase node "Insert Task":
     - Operation: Create
     - Table: tasks
     - Map properties: title, description, priority, source_event_id, deadline, status ('open')
 
-NODE 4 — Code node "Return Results":
+NODE 4 â€” Code node "Return Results":
 - Return: { action_items_count, decisions_count, risks_count, task_ids }
 
 SETTINGS:
-- "This workflow can be called by" → "Any workflow"
-- Error Workflow → ERROR__GlobalHandler
+- "This workflow can be called by" â†’ "Any workflow"
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 ---
 
-# PHASE 4 — Knowledge Base (Week 4)
+# PHASE 4 â€” Knowledge Base (Week 4)
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 4.1 — Build `KB__IngestDocument`
+## PROMPT 4.1 â€” Build `KB__IngestDocument`
 
 > **Goal:** Build the document ingestion workflow with change detection and incremental processing.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1281,72 +1281,72 @@ TRIGGER: Google Drive Trigger node
 - Folder: Knowledge-Base (use folder ID)
 - Poll Times: Every 5 Minutes
 
-NODE 1 — Execute Workflow node "Deduplicate":
+NODE 1 â€” Execute Workflow node "Deduplicate":
 - Call: UTIL__Deduplicate
 - Input: { source: "drive", dedup_key: "{{ $json.id }}", event_type: "document_ingestion" }
 
-NODE 2 — IF "Skip if Duplicate" (true → end)
+NODE 2 â€” IF "Skip if Duplicate" (true â†’ end)
 
-NODE 3 — Google Drive node "Download File"
+NODE 3 â€” Google Drive node "Download File"
 
-NODE 4 — Code node "Extract Text":
+NODE 4 â€” Code node "Extract Text":
 - Detect file type and extract text content
 - For PDFs: use Extract from File node (n8n built-in)
 - For Google Docs: content comes as text from Drive
 - For DOCX: use Extract from File node
 
-NODE 5 — Code node "Compute Content Hash":
+NODE 5 â€” Code node "Compute Content Hash":
 - const hash = require('crypto').createHash('sha256').update(text).digest('hex');
 - Also extract: title from filename, source_type from mimeType
 
-NODE 6 — Supabase node "Check Existing Document":
+NODE 6 â€” Supabase node "Check Existing Document":
 - Operation: Get Many
 - Table: documents
 - Filter: source_file_id = drive_file_id
 - Return limit: 1
 
-NODE 7 — IF node "Document Changed?":
-- No existing row → new document path
-- Existing row, same hash → skip (no changes)
-- Existing row, different hash → update path (delete old vectors first)
+NODE 7 â€” IF node "Document Changed?":
+- No existing row â†’ new document path
+- Existing row, same hash â†’ skip (no changes)
+- Existing row, different hash â†’ update path (delete old vectors first)
 
-NODE 8 (update path) — Supabase node "Delete Old Embeddings Metadata":
+NODE 8 (update path) â€” Supabase node "Delete Old Embeddings Metadata":
 - Operation: Delete
 - Table: embeddings_metadata
 - Match by: document_id
 
-NODE 9 — Supabase node "Upsert Document":
+NODE 9 â€” Supabase node "Upsert Document":
 - Operation: Upsert (or Create/Update based on existence)
 - Table: documents
 - Match by: content_hash
 - Map properties: title, source_type, source_url, source_file_id, content_hash, status ('processing')
 
-NODE 10 — Execute Workflow node "Chunk and Embed":
+NODE 10 â€” Execute Workflow node "Chunk and Embed":
 - Call: KB__ChunkAndEmbed
 - Input: { document_id, text_content, collection_name: "knowledge_base" }
 
-NODE 11 — Supabase node "Mark Complete":
+NODE 11 â€” Supabase node "Mark Complete":
 - Operation: Update
 - Table: documents
 - Match by: id
 - Map properties: status ('completed'), chunk_count, processed_at (NOW())
 
-NODE 12 — Execute Workflow node "Audit Log"
+NODE 12 â€” Execute Workflow node "Audit Log"
 
 SETTINGS:
-- Error Workflow → ERROR__GlobalHandler
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 4.2 — Build `KB__ChunkAndEmbed`
+## PROMPT 4.2 â€” Build `KB__ChunkAndEmbed`
 
 > **Goal:** Build the chunking and embedding sub-workflow.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1365,7 +1365,7 @@ EXPECTED INPUT:
   "collection_name": "knowledge_base"
 }
 
-NODE 1 — Code node "Chunk Text":
+NODE 1 â€” Code node "Chunk Text":
 - Split text into chunks of ~500 tokens (~2000 characters)
 - Overlap: 50 tokens (~200 characters)
 - Preserve paragraph boundaries where possible
@@ -1375,14 +1375,14 @@ NODE 1 — Code node "Chunk Text":
   3. When exceeding limit, save chunk and start new chunk from overlap point
 - Output: array of { chunk_index, chunk_text }
 
-NODE 2 — Loop Over Items node "Process Each Chunk":
+NODE 2 â€” Loop Over Items node "Process Each Chunk":
   For each chunk:
 
-  NODE 2A — Execute Workflow node "Generate Embedding":
+  NODE 2A â€” Execute Workflow node "Generate Embedding":
   - Call: UTIL__AICall
   - Input: { prompt: chunk_text, model_preference: "embedding" }
 
-  NODE 2B — Supabase node "Insert Embedding":
+  NODE 2B â€” Supabase node "Insert Embedding":
   - Credential: Supabase API
   - Resource: Database
 - Operation: Create
@@ -1390,24 +1390,24 @@ NODE 2 — Loop Over Items node "Process Each Chunk":
 - Map properties to JSON payload
   - Parameters: [document_id, chunk_index, chunk_text, '[embedding_array_from_step_2A]']
 
-NODE 3 — Code node "Return Count":
+NODE 3 â€” Code node "Return Count":
 - Return: { chunk_count: total_chunks_processed }
 
 SETTINGS:
-- "This workflow can be called by" → "Any workflow"
-- Error Workflow → ERROR__GlobalHandler
+- "This workflow can be called by" â†’ "Any workflow"
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 4.3 — Build `KB__SemanticSearch`
+## PROMPT 4.3 â€” Build `KB__SemanticSearch`
 
 > **Goal:** Build the webhook-based knowledge base query API with RAG.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1429,25 +1429,25 @@ EXPECTED REQUEST BODY:
   "top_k": 5
 }
 
-NODE 1 — Code node "Validate Input":
+NODE 1 â€” Code node "Validate Input":
 - Check query is provided and non-empty
 - Default top_k to 5 if not provided
 
-NODE 2 — Execute Workflow node "Embed Query":
+NODE 2 â€” Execute Workflow node "Embed Query":
 - Call: UTIL__AICall
 - Input: { prompt: query, model_preference: "embedding" }
 
-NODE 3 — Supabase node "Semantic Search (pgvector)":
+NODE 3 â€” Supabase node "Semantic Search (pgvector)":
 - Operation: Execute Database Function
 - Function Name: match_documents
 - Parameters: query_embedding (array), match_threshold (0.7), match_count (top_k), filter_collection ('knowledge_base')
 
-NODE 4 — Code node "Format Context":
+NODE 4 â€” Code node "Format Context":
 - Extract the top_k results
 - Build context string from the returned chunk_text:
   "Source 1 (similarity: 0.92): [chunk_text]\n\nSource 2 (similarity: 0.87): [chunk_text]..."
 
-NODE 5 — Execute Workflow node "Generate Answer":
+NODE 5 â€” Execute Workflow node "Generate Answer":
 - Call: UTIL__AICall
 - Input:
   {
@@ -1457,7 +1457,7 @@ NODE 5 — Execute Workflow node "Generate Answer":
     "output_format": "text"
   }
 
-NODE 6 — Code node "Format Response":
+NODE 6 â€” Code node "Format Response":
 - Return:
   {
     "query": original_query,
@@ -1468,30 +1468,30 @@ NODE 6 — Code node "Format Response":
     "model_used": model_from_ai_call
   }
 
-NODE 7 — Respond to Webhook node:
+NODE 7 â€” Respond to Webhook node:
 - Response Code: 200
 - Response Body: formatted response from Node 6
 
-NODE 8 — Execute Workflow node "Audit Log"
+NODE 8 â€” Execute Workflow node "Audit Log"
 
 SETTINGS:
-- Error Workflow → ERROR__GlobalHandler
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 ---
 
-# PHASE 5 — Task Orchestration (Week 5)
+# PHASE 5 â€” Task Orchestration (Week 5)
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 5.1 — Build `TASK__CreateFromEvent`
+## PROMPT 5.1 â€” Build `TASK__CreateFromEvent`
 
 > **Goal:** Build the reusable task creation sub-workflow.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1513,46 +1513,46 @@ EXPECTED INPUT:
   "source_event_id": "uuid-of-originating-event"
 }
 
-NODE 1 — Supabase node "Resolve User":
+NODE 1 â€” Supabase node "Resolve User":
 - Operation: Get Many
 - Table: users
 - Filter: email = assigned_to
 - Return limit: 1
 - If no user found, use NULL for assigned_to UUID
 
-NODE 2 — Supabase node "Insert Task":
+NODE 2 â€” Supabase node "Insert Task":
 - Operation: Create
 - Table: tasks
 - Map properties: title, description, assigned_to, priority, deadline, source_event_id, status ('open')
 
-NODE 3 — IF node "User Has Slack?":
+NODE 3 â€” IF node "User Has Slack?":
 - Condition: slack_user_id is not null
 
-NODE 4 — Execute Workflow node "Notify Assignee":
+NODE 4 â€” Execute Workflow node "Notify Assignee":
 - Call: UTIL__SendSlackMessage
 - Input:
   {
     "channel": "@{{ slack_user_id }}",
-    "message": "📋 *New Task Assigned*\n*Title:* {{ title }}\n*Priority:* {{ priority }}\n*Deadline:* {{ deadline }}\n*Description:* {{ description }}"
+    "message": "ðŸ“‹ *New Task Assigned*\n*Title:* {{ title }}\n*Priority:* {{ priority }}\n*Deadline:* {{ deadline }}\n*Description:* {{ description }}"
   }
 
-NODE 5 — Execute Workflow node "Audit Log"
+NODE 5 â€” Execute Workflow node "Audit Log"
 
 SETTINGS:
-- "This workflow can be called by" → "Any workflow"
-- Error Workflow → ERROR__GlobalHandler
+- "This workflow can be called by" â†’ "Any workflow"
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 5.2 — Build `TASK__SendReminders`
+## PROMPT 5.2 â€” Build `TASK__SendReminders`
 
 > **Goal:** Build the daily task reminder cron workflow.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1565,7 +1565,7 @@ Create an n8n workflow named "TASK__SendReminders" with the following:
 TRIGGER: Cron node
 - Expression: 0 9 * * * (every day at 9:00 AM)
 
-NODE 1 — Supabase node "Query Upcoming Tasks":
+NODE 1 â€” Supabase node "Query Upcoming Tasks":
 - Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
 - SQL Query:
   SELECT t.*, u.name, u.email, u.slack_user_id
@@ -1576,7 +1576,7 @@ NODE 1 — Supabase node "Query Upcoming Tasks":
   AND t.deadline BETWEEN NOW() AND NOW() + INTERVAL '48 hours'
   ORDER BY t.deadline ASC
 
-NODE 2 — Supabase node "Query Overdue Tasks":
+NODE 2 â€” Supabase node "Query Overdue Tasks":
 - Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
 - SQL Query:
   SELECT t.*, u.name, u.email, u.slack_user_id
@@ -1587,38 +1587,38 @@ NODE 2 — Supabase node "Query Overdue Tasks":
   AND t.deadline < NOW()
   ORDER BY t.deadline ASC
 
-NODE 3 — Code node "Group by Assignee":
+NODE 3 â€” Code node "Group by Assignee":
 - Combine upcoming + overdue tasks
 - Group by assignee's slack_user_id
 - For each assignee, build a message listing their tasks
 
-NODE 4 — Loop node "Send Reminders":
+NODE 4 â€” Loop node "Send Reminders":
   For each assignee group:
 
-  NODE 4A — Execute Workflow node "Send Reminder":
+  NODE 4A â€” Execute Workflow node "Send Reminder":
   - Call: UTIL__SendSlackMessage
   - Input:
     {
       "channel": "@{{ slack_user_id }}",
-      "message": "⏰ *Daily Task Reminder*\n\n*Overdue ({{ overdue_count }}):*\n{{ overdue_list }}\n\n*Upcoming ({{ upcoming_count }}):*\n{{ upcoming_list }}"
+      "message": "â° *Daily Task Reminder*\n\n*Overdue ({{ overdue_count }}):*\n{{ overdue_list }}\n\n*Upcoming ({{ upcoming_count }}):*\n{{ upcoming_list }}"
     }
 
-NODE 5 — Execute Workflow node "Audit Log"
+NODE 5 â€” Execute Workflow node "Audit Log"
 
 SETTINGS:
-- Error Workflow → ERROR__GlobalHandler
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 5.3 — Build `TASK__Escalate`
+## PROMPT 5.3 â€” Build `TASK__Escalate`
 
 > **Goal:** Build the hourly task escalation cron workflow.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1631,7 +1631,7 @@ Create an n8n workflow named "TASK__Escalate" with the following:
 TRIGGER: Cron node
 - Expression: 0 * * * * (every hour)
 
-NODE 1 — Supabase node "Query Overdue Unescalated":
+NODE 1 â€” Supabase node "Query Overdue Unescalated":
 - Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
 - SQL Query:
   SELECT t.*, u.name as assignee_name, u.email as assignee_email,
@@ -1643,50 +1643,50 @@ NODE 1 — Supabase node "Query Overdue Unescalated":
   AND t.deadline < NOW() - INTERVAL '24 hours'
   AND t.escalated_at IS NULL
 
-NODE 2 — IF node "Any Tasks to Escalate?":
+NODE 2 â€” IF node "Any Tasks to Escalate?":
 - Condition: query returned rows
 
-NODE 3 — Loop node "Escalate Each":
+NODE 3 â€” Loop node "Escalate Each":
   For each task:
 
-  NODE 3A — Supabase node "Mark Escalated":
+  NODE 3A â€” Supabase node "Mark Escalated":
   - Operation: Update
     - Table: tasks
     - Match by: id
     - Map properties: escalated_at (NOW()), priority ('critical'), updated_at (NOW())
 
-  NODE 3B — Execute Workflow node "Notify Manager":
+  NODE 3B â€” Execute Workflow node "Notify Manager":
   - Call: UTIL__SendSlackMessage (if manager_slack_id exists)
   - Input:
     {
       "channel": "@{{ manager_slack_id }}",
-      "message": "🚨 *Task Escalation*\n*Task:* {{ title }}\n*Assigned to:* {{ assignee_name }}\n*Deadline:* {{ deadline }} (overdue by {{ hours_overdue }} hours)\n*Priority:* Upgraded to CRITICAL"
+      "message": "ðŸš¨ *Task Escalation*\n*Task:* {{ title }}\n*Assigned to:* {{ assignee_name }}\n*Deadline:* {{ deadline }} (overdue by {{ hours_overdue }} hours)\n*Priority:* Upgraded to CRITICAL"
     }
 
-  NODE 3C — Execute Workflow node "Alert Ops Channel":
+  NODE 3C â€” Execute Workflow node "Alert Ops Channel":
   - Call: UTIL__SendSlackMessage
   - Input: { channel: "#ops-alerts", message: escalation summary }
 
-NODE 4 — Execute Workflow node "Audit Log"
+NODE 4 â€” Execute Workflow node "Audit Log"
 
 SETTINGS:
-- Error Workflow → ERROR__GlobalHandler
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 ---
 
-# PHASE 6 — Reporting (Week 6)
+# PHASE 6 â€” Reporting (Week 6)
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 6.1 — Build `REPORT__DailySummary`
+## PROMPT 6.1 â€” Build `REPORT__DailySummary`
 
 > **Goal:** Build the daily executive summary report.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1699,11 +1699,11 @@ Create an n8n workflow named "REPORT__DailySummary" with the following:
 TRIGGER: Cron node
 - Expression: 0 8 * * * (every day at 8:00 AM)
 
-NODE 1 — Supabase node "Emails Processed":
+NODE 1 â€” Supabase node "Emails Processed":
 - Operation: Execute Query (or Get Many)
 - SQL Query: SELECT COUNT(*) as count FROM events WHERE event_type = 'email_incoming' AND created_at > NOW() - INTERVAL '24 hours'
 
-NODE 2 — Supabase node "Tasks Metrics":
+NODE 2 â€” Supabase node "Tasks Metrics":
 - Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
 - SQL Query:
   SELECT
@@ -1712,7 +1712,7 @@ NODE 2 — Supabase node "Tasks Metrics":
     COUNT(*) FILTER (WHERE status = 'open' AND deadline < NOW()) as overdue
   FROM tasks
 
-NODE 3 — Supabase node "AI Usage":
+NODE 3 â€” Supabase node "AI Usage":
 - Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
 - SQL Query:
   SELECT
@@ -1724,11 +1724,11 @@ NODE 3 — Supabase node "AI Usage":
   FROM workflow_logs
   WHERE log_type = 'ai_call' AND created_at > NOW() - INTERVAL '24 hours'
 
-NODE 4 — Supabase node "Errors Count":
+NODE 4 â€” Supabase node "Errors Count":
 - Operation: Execute Query (or Get Many)
 - SQL Query: SELECT COUNT(*) as count FROM workflow_logs WHERE log_type = 'error' AND created_at > NOW() - INTERVAL '24 hours'
 
-NODE 5 — Supabase node "Approvals Status":
+NODE 5 â€” Supabase node "Approvals Status":
 - Operation: Execute Query (or Get Many / Database Function depending on node capabilities)
 - SQL Query:
   SELECT
@@ -1736,10 +1736,10 @@ NODE 5 — Supabase node "Approvals Status":
     COUNT(*) FILTER (WHERE approved_at > NOW() - INTERVAL '24 hours') as approved
   FROM approvals
 
-NODE 6 — Code node "Build Metrics Object":
+NODE 6 â€” Code node "Build Metrics Object":
 - Combine all query results into a structured JSON metrics object
 
-NODE 7 — Execute Workflow node "Generate AI Summary":
+NODE 7 â€” Execute Workflow node "Generate AI Summary":
 - Call: UTIL__AICall
 - Input:
   {
@@ -1749,32 +1749,32 @@ NODE 7 — Execute Workflow node "Generate AI Summary":
     "output_format": "text"
   }
 
-NODE 8 — Google Docs node "Create Report":
+NODE 8 â€” Google Docs node "Create Report":
 - Credential: Google Business Ops
 - Operation: Create
-- Title: "Daily Operations Report — {{ date }}"
+- Title: "Daily Operations Report â€” {{ date }}"
 - Content: Metrics tables + AI summary + recommendations
 
-NODE 9 — Execute Workflow node "Notify Executives":
+NODE 9 â€” Execute Workflow node "Notify Executives":
 - Call: UTIL__SendSlackMessage
 - Input: { channel: "#executive-updates", message: summary + doc link }
 
-NODE 10 — Execute Workflow node "Audit Log"
+NODE 10 â€” Execute Workflow node "Audit Log"
 
 SETTINGS:
-- Error Workflow → ERROR__GlobalHandler
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 6.2 — Build `REPORT__WeeklyDigest`
+## PROMPT 6.2 â€” Build `REPORT__WeeklyDigest`
 
 > **Goal:** Build the Monday morning weekly digest.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1787,45 +1787,45 @@ Create an n8n workflow named "REPORT__WeeklyDigest" with the following:
 TRIGGER: Cron node
 - Expression: 0 9 * * 1 (Monday at 9:00 AM)
 
-NODE 1–5: Same metric queries as REPORT__DailySummary but with INTERVAL '7 days'
+NODE 1â€“5: Same metric queries as REPORT__DailySummary but with INTERVAL '7 days'
 
-NODE 6 — Supabase node "Last Week Comparison":
+NODE 6 â€” Supabase node "Last Week Comparison":
 - Query the same metrics for the PREVIOUS week (8-14 days ago)
 - This enables trend analysis (this week vs. last week)
 
-NODE 7 — Code node "Calculate Trends":
+NODE 7 â€” Code node "Calculate Trends":
 - Compare this week vs. last week:
   - emails_change_pct
   - tasks_completion_rate_change
   - error_rate_change
   - ai_cost_change
 
-NODE 8 — Execute Workflow node "Generate AI Digest":
+NODE 8 â€” Execute Workflow node "Generate AI Digest":
 - Call: UTIL__AICall
 - Input: prompt with metrics + trends, asking for strategic weekly recommendations
 
-NODE 9 — Google Docs node "Create Weekly Digest"
+NODE 9 â€” Google Docs node "Create Weekly Digest"
 
-NODE 10 — Execute Workflow node "Notify Executives"
+NODE 10 â€” Execute Workflow node "Notify Executives"
 
-NODE 11 — Execute Workflow node "Audit Log"
+NODE 11 â€” Execute Workflow node "Audit Log"
 
 SETTINGS:
-- Error Workflow → ERROR__GlobalHandler
+- Error Workflow â†’ ERROR__GlobalHandler
 ```
 
 ---
 
-# PHASE 7 — Hardening & Backup (Week 7)
+# PHASE 7 â€” Hardening & Backup (Week 7)
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
 ## PROMPT 7.1 — Build `UTIL__BackupWorkflows`
 
-> **Goal:** Build the automated daily workflow backup to GitHub.
+> **Goal:** Build the manual-export workflow backup to GitHub for n8n Cloud plans without API access.
 
 ✂️ **COPY FROM HERE** ✂️
 
@@ -1845,72 +1845,90 @@ SETTINGS:
    - Scopes: `repo` (full access to private repositories)
    - Copy the token
 
-3. **Configure in n8n:**
+3. **Configure GitHub in n8n:**
    - Credentials → Add Credential → "GitHub API"
    - Access Token: your personal access token
    - Save as `GitHub Backups`
+
+4. **Create a Google Drive upload folder:**
+   - Create a folder named `n8n-workflow-exports`
+   - Copy the folder ID from the Google Drive URL
+   - This is where manually exported n8n workflow JSON files will be uploaded
+
+5. **Manual n8n export process:**
+   - In n8n Cloud, manually export workflows as JSON
+   - Upload the export JSON file to the `n8n-workflow-exports` Google Drive folder
+   - The backup workflow will trigger from that upload and push each workflow JSON to GitHub
+
+> **Why manual export?** The n8n Cloud API is not available on the current plan, so this project uses Google Drive as the ingestion point for manual n8n export files.
 
 ### n8n Workflow Prompt
 
 ```
 Create an n8n workflow named "UTIL__BackupWorkflows" with the following:
 
-TRIGGER: Cron node
-- Expression: 0 2 * * * (daily at 2:00 AM)
+TRIGGER: Google Drive Trigger node
+- Event: File Created
+- Folder: n8n-workflow-exports
+- Folder ID: YOUR_N8N_EXPORTS_FOLDER_ID
+- Credential: Google Business Ops
 
-NODE 1 — HTTP Request node "List All Workflows":
-- Method: GET
-- URL: https://edwin-bayog.app.n8n.cloud/api/v1/workflows
-  (Self-hosted: http://localhost:5678/api/v1/workflows)
-- Authentication: Header Auth → X-N8N-API-KEY: your-api-key
-- Note: You need to create an API key in n8n Settings → API
+NODE 1 — Google Drive node "Download Export File":
+- Operation: Download
+- File ID: {{ id from Google Drive Trigger }}
 
-NODE 2 — Loop node "Process Each Workflow":
-  For each workflow:
-
-  NODE 2A — HTTP Request node "Get Full Workflow":
-  - Method: GET
-  - URL: https://edwin-bayog.app.n8n.cloud/api/v1/workflows/{{ workflow_id }}
-    (Self-hosted: http://localhost:5678/api/v1/workflows/{{ workflow_id }})
-
-  NODE 2B — Code node "Format for Git":
+NODE 2 — Code node "Parse Export File":
+- Read the uploaded JSON export file
+- Support either:
+  - an array of workflow objects
+  - an object with workflows[] or data[]
+  - a single workflow JSON object
+- For each workflow:
+  - Validate it has name and nodes
   - Convert workflow JSON to pretty-printed string
   - Generate filename: "workflows/{{ workflow_name }}.json"
+  - Generate commit message: "Backup: {{ workflow_name }} - {{ date }}"
 
-  NODE 2C — GitHub node "Create or Update File":
-  - Credential: GitHub Backups
-  - Operation: Create or Update
-  - Repository: your-username/n8n-workflow-backups
-  - Path: workflows/{{ workflow_name }}.json
-  - Content: pretty-printed workflow JSON
-  - Commit Message: "Backup: {{ workflow_name }} — {{ date }}"
+NODE 3 — GitHub node "Create or Update File":
+- Credential: GitHub Backups
+- Operation: Create or Update / Upsert
+- Repository: your-username/n8n-workflow-backups
+- Path: workflows/{{ workflow_name }}.json
+- Content: pretty-printed workflow JSON
+- Commit Message: "Backup: {{ workflow_name }} - {{ date }}"
 
-NODE 3 — Execute Workflow node "Audit Log"
+NODE 4 — Code node "Build Backup Summary":
+- Count workflows backed up
+- Include source_file_id, source_file_name, backup_date, and backed_up_workflows list
+
+NODE 5 — Execute Workflow node "Audit Log"
 - Log backup summary: workflows backed up count, any failures
 
 SETTINGS:
 - Error Workflow → ERROR__GlobalHandler
 ```
 
-### n8n API Setup
+### Manual Export Backup Setup
 
-1. In n8n Cloud at `https://edwin-bayog.app.n8n.cloud/`, go to **Settings** → **API**
-2. Create an API key
-3. Use this key in the HTTP Request node's authentication header:
-   `X-N8N-API-KEY: your-api-key`
+1. In n8n Cloud, manually export workflows as JSON.
+2. Upload the exported JSON file to Google Drive folder `n8n-workflow-exports`.
+3. Confirm `UTIL__BackupWorkflows` runs and creates/updates files in GitHub.
+4. Replace these placeholders before activating:
+   - `YOUR_N8N_EXPORTS_FOLDER_ID`
+   - `your-username/n8n-workflow-backups`
 
-> **Note:** n8n Cloud API is available on paid plans. Check your plan includes API access. If not, you can manually export workflows from Settings → Workflows → Export All as a fallback.
+> **Note:** This implementation intentionally does not use the n8n API because API access is unavailable on the current plan.
 
 
 ✂️ **TO HERE** ✂️
 
 ---
 
-## PROMPT 7.2 — Security Hardening Checklist
+## PROMPT 7.2 - Security Hardening Checklist
 
 > **Goal:** Review and secure all workflows for production readiness.
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1918,26 +1936,29 @@ SETTINGS:
 ### Checklist (manual steps, not a workflow)
 
 ```
-SECURITY HARDENING — Apply to all existing workflows:
+SECURITY HARDENING - Apply to all existing workflows:
 
 1. WEBHOOK AUTHENTICATION:
    - Open KB__SemanticSearch (webhook workflow)
-   - Add Header Authentication: Authorization: Bearer YOUR_SECRET_TOKEN
+   - Verify the Webhook node uses Header Authentication.
+   - Create/select the n8n Header Auth credential named "KB Semantic Search Bearer Token":
+     Header Name: Authorization
+     Header Value: Bearer YOUR_SECRET_TOKEN
    - Test that unauthenticated requests are rejected
 
 2. GOOGLE OAUTH PRODUCTION MODE:
-   - Go to Google Cloud Console → OAuth consent screen
+   - Go to Google Cloud Console -> OAuth consent screen
    - Verify the app is in "Production" mode (not "Testing")
    - If still in Testing, publish the app to Production
    - This prevents 7-day token expiration
 
 3. API KEY ROTATION:
-   - Create new OpenAI API key → update n8n credential → deactivate old key
-   - Create new Gemini API key → update n8n credential → deactivate old key
-   - Create new Slack bot token → update n8n credential → deactivate old key
+   - Create new OpenRouter API key -> update n8n credential -> deactivate old key
+   - Create new Hugging Face API key -> update n8n credential -> deactivate old key
+   - Create new Slack bot token -> update n8n credential -> deactivate old key
 
 4. ERROR WORKFLOW VERIFICATION:
-   - Open EVERY workflow → Settings → verify Error Workflow = ERROR__GlobalHandler
+   - Open EVERY workflow -> Settings -> verify Error Workflow = ERROR__GlobalHandler
    - List of workflows to check:
      [ ] EMAIL__ClassifyIncoming
      [ ] EMAIL__GenerateDraft
@@ -1954,9 +1975,9 @@ SECURITY HARDENING — Apply to all existing workflows:
      [ ] UTIL__BackupWorkflows
 
 5. EXECUTION DATA RETENTION:
-   - **n8n Cloud:** Go to Settings → Execution Data in the n8n Cloud UI.
+   - **n8n Cloud:** Go to Settings -> Execution Data in the n8n Cloud UI.
      Set retention policies there (n8n Cloud manages this via the UI, not env vars).
-   - **Self-hosted only — Add to .env:**
+   - **Self-hosted only - Add to .env:**
      EXECUTIONS_DATA_SAVE_ON_ERROR=all
      EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
      EXECUTIONS_DATA_PRUNE=true
@@ -1966,18 +1987,18 @@ SECURITY HARDENING — Apply to all existing workflows:
 
 ---
 
-# PHASE 8 — Documentation & Demo (Week 8)
+# PHASE 8 - Documentation & Demo (Week 8)
 
-> This phase is manual work — no n8n workflows to build.
+> This phase is manual work â€” no n8n workflows to build.
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 8.1 — Final Verification
+## PROMPT 8.1 â€” Final Verification
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -1995,46 +2016,46 @@ Infrastructure:
 [ ] Redis is running and accessible
 
 Utility Workflows (test each):
-[ ] ERROR__GlobalHandler — trigger intentional failure → Slack alert received
-[ ] UTIL__WriteAuditLog — log entry appears in workflow_logs
-[ ] UTIL__SendSlackMessage — message appears in Slack
-[ ] UTIL__AICall — returns valid AI response with usage logging
-[ ] UTIL__Deduplicate — duplicate returns isDuplicate:true, new returns isDuplicate:false
+[ ] ERROR__GlobalHandler â€” trigger intentional failure â†’ Slack alert received
+[ ] UTIL__WriteAuditLog â€” log entry appears in workflow_logs
+[ ] UTIL__SendSlackMessage â€” message appears in Slack
+[ ] UTIL__AICall â€” returns valid AI response with usage logging
+[ ] UTIL__Deduplicate â€” duplicate returns isDuplicate:true, new returns isDuplicate:false
 
 Email Workflows:
-[ ] EMAIL__ClassifyIncoming — send test email → classification appears in events + Slack
-[ ] EMAIL__GenerateDraft — draft appears in Gmail Drafts folder + Slack notification
+[ ] EMAIL__ClassifyIncoming â€” send test email â†’ classification appears in events + Slack
+[ ] EMAIL__GenerateDraft â€” draft appears in Gmail Drafts folder + Slack notification
 
 Meeting Workflows:
-[ ] MEET__ProcessTranscript — upload .txt to Meeting-Transcripts/ → summary in Google Docs
-[ ] MEET__ExtractActions — action items created in tasks table
+[ ] MEET__ProcessTranscript â€” upload .txt to Meeting-Transcripts/ â†’ summary in Google Docs
+[ ] MEET__ExtractActions â€” action items created in tasks table
 
 Knowledge Base:
-[ ] KB__IngestDocument — upload doc to Knowledge-Base/ → vectors in Supabase pgvector
-[ ] KB__ChunkAndEmbed — embeddings_metadata populated
-[ ] KB__SemanticSearch — POST to webhook → returns relevant answer with sources
+[ ] KB__IngestDocument â€” upload doc to Knowledge-Base/ â†’ vectors in Supabase pgvector
+[ ] KB__ChunkAndEmbed â€” embeddings_metadata populated
+[ ] KB__SemanticSearch â€” POST to webhook â†’ returns relevant answer with sources
 
 Task Orchestration:
-[ ] TASK__CreateFromEvent — task created + Slack notification sent
-[ ] TASK__SendReminders — reminder message sent for upcoming/overdue tasks
-[ ] TASK__Escalate — overdue tasks escalated + manager notified
+[ ] TASK__CreateFromEvent â€” task created + Slack notification sent
+[ ] TASK__SendReminders â€” reminder message sent for upcoming/overdue tasks
+[ ] TASK__Escalate â€” overdue tasks escalated + manager notified
 
 Reporting:
-[ ] REPORT__DailySummary — report created in Google Docs + Slack notification
-[ ] REPORT__WeeklyDigest — weekly digest created
+[ ] REPORT__DailySummary â€” report created in Google Docs + Slack notification
+[ ] REPORT__WeeklyDigest â€” weekly digest created
 
 Backup:
-[ ] UTIL__BackupWorkflows — all workflows exported to GitHub
+[ ] UTIL__BackupWorkflows — upload manual n8n export JSON to Google Drive folder → workflows backed up to GitHub
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 
-## PROMPT 8.2 — README Structure
+## PROMPT 8.2 â€” README Structure
 
-✂️ **COPY FROM HERE** ✂️
+âœ‚ï¸ **COPY FROM HERE** âœ‚ï¸
 
 **System Context:** Before generating code or steps, please review the following files to understand the system architecture, logic, and schemas: PROJECT.md, ARCHITECTURE.md, WORKFLOWS.md, DATABASE.md, DEPLOYMENT.md, STACK.md, SCHEDULE.md.
 
@@ -2044,7 +2065,7 @@ Create a comprehensive README.md for the project with:
 
 1. Project Title & Description
 2. Architecture Diagram (paste from ARCHITECTURE.md)
-3. Features List (with status: ✅ Implemented)
+3. Features List (with status: âœ… Implemented)
 4. Tech Stack Table
 5. Prerequisites
 6. Quick Start (docker compose up -d + setup steps)
@@ -2058,7 +2079,7 @@ Create a comprehensive README.md for the project with:
 ```
 
 
-✂️ **TO HERE** ✂️
+âœ‚ï¸ **TO HERE** âœ‚ï¸
 
 ---
 

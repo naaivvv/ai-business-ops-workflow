@@ -2,22 +2,17 @@
   "name": "UTIL__SendSlackMessage",
   "nodes": [
     {
-      "parameters": {},
-      "id": "trigger",
-      "name": "When Executed by Another Workflow",
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
-      "position": [0, 0]
-    },
-    {
       "parameters": {
         "jsCode": "const item = $input.first().json;\n\nconst channel = item.channel || '#ops-alerts';\nconst message = item.message;\n\nif (!message) {\n  throw new Error('Missing required parameter: message');\n}\n\nreturn {\n  json: {\n    channel: channel,\n    message: message,\n    thread_ts: item.thread_ts || ''\n  }\n};"
       },
-      "id": "validate",
+      "id": "bf7bff26-fe5d-456c-8ef0-9c328460384a",
       "name": "Validate Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [200, 0]
+      "position": [
+        208,
+        0
+      ]
     },
     {
       "parameters": {
@@ -28,15 +23,17 @@
           "mode": "name"
         },
         "text": "={{ $json.message }}",
-        "otherOptions": {
-          "threadTs": "={{ $json.thread_ts ? $json.thread_ts : undefined }}"
-        }
+        "otherOptions": {}
       },
-      "id": "slack_node",
+      "id": "fe0062f7-553a-45b2-bfb8-15a4cb98d70a",
       "name": "Send Message",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [400, 0],
+      "position": [
+        400,
+        0
+      ],
+      "webhookId": "596d2569-ff94-444b-b69a-27f3e64cefe0",
       "credentials": {
         "slackApi": {
           "id": "0QT3vEsrQsq6Pr7G",
@@ -48,25 +45,44 @@
       "parameters": {
         "jsCode": "const slackResult = $input.first().json;\n\nreturn {\n  json: {\n    success: true,\n    message_ts: slackResult.ts || (slackResult.message ? slackResult.message.ts : null),\n    channel: slackResult.channel\n  }\n};"
       },
-      "id": "return_result",
+      "id": "d7ee3754-e28a-4c3a-a1ee-db71f38e6487",
       "name": "Return Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [600, 0]
-    }
-  ],
-  "connections": {
-    "When Executed by Another Workflow": {
-      "main": [
-        [
-          {
-            "node": "Validate Input",
-            "type": "main",
-            "index": 0
-          }
-        ]
+      "position": [
+        608,
+        0
       ]
     },
+    {
+      "parameters": {
+        "content": "## Send Slack Message\n",
+        "height": 288,
+        "width": 944
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -96
+      ],
+      "id": "c6f73739-cd3d-4a38-bd6c-ebe72ce864a6",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {},
+      "id": "6c8882fd-2675-4573-af56-1de8f24e2898",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
     "Validate Input": {
       "main": [
         [
@@ -88,11 +104,32 @@
           }
         ]
       ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "callerPolicy": "any",
-    "errorWorkflow": "CpXv8Are7dDLolBo"
-  }
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "661b8f7b-b552-4a3c-9d83-442840b250c5",
+  "meta": {
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "nERkPtt59rc5Gfbm",
+  "tags": []
 }

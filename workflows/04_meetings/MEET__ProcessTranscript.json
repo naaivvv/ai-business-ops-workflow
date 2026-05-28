@@ -12,30 +12,29 @@
             }
           ]
         },
-        "triggerOn": "fileCreated",
-        "folderId": "YOUR_FOLDER_ID_HERE_FROM_PROMPT_0_8"
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1b7XjZHtgh7GyjUTgu3WmSKe4afpohkYR",
+          "mode": "id"
+        },
+        "event": "fileCreated",
+        "options": {}
       },
       "name": "Google Drive Trigger",
       "type": "n8n-nodes-base.googleDriveTrigger",
-      "position": [0, 0],
+      "position": [
+        2688,
+        512
+      ],
       "typeVersion": 1,
+      "id": "fc3a39de-163a-4db2-8558-6f0634ba3608",
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "Google Business Ops",
-          "name": "Google Business Ops"
+          "id": "P4ItnczlmD9WHDuQ",
+          "name": "Google Drive OAuth2 API"
         }
       }
-    },
-    {
-      "parameters": {
-        "workflowId": "UTIL__Deduplicate",
-        "mode": "each",
-        "workflowInputs": "={{ {\n  \"source\": \"drive\",\n  \"dedup_key\": $json.id,\n  \"event_type\": \"meeting_transcript\"\n} }}"
-      },
-      "name": "Deduplicate",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "position": [200, 0],
-      "typeVersion": 1
     },
     {
       "parameters": {
@@ -50,22 +49,31 @@
       },
       "name": "Skip if Duplicate",
       "type": "n8n-nodes-base.if",
-      "position": [400, 0],
-      "typeVersion": 1
+      "position": [
+        3088,
+        512
+      ],
+      "typeVersion": 1,
+      "id": "8a29685a-ac4b-4e1e-8dc6-2af18cfd9ad5"
     },
     {
       "parameters": {
         "operation": "download",
-        "fileId": "={{ $('Google Drive Trigger').item.json.id }}"
+        "fileId": "={{ $('Google Drive Trigger').item.json.id }}",
+        "options": {}
       },
       "name": "Download File",
       "type": "n8n-nodes-base.googleDrive",
-      "position": [600, 200],
+      "position": [
+        3264,
+        720
+      ],
       "typeVersion": 2,
+      "id": "219c60ea-b406-4180-bc4c-880e4c8bbd79",
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "Google Business Ops",
-          "name": "Google Business Ops"
+          "id": "P4ItnczlmD9WHDuQ",
+          "name": "Google Drive OAuth2 API"
         }
       }
     },
@@ -75,88 +83,133 @@
       },
       "name": "Extract Text",
       "type": "n8n-nodes-base.code",
-      "position": [800, 200],
-      "typeVersion": 2
+      "position": [
+        3456,
+        720
+      ],
+      "typeVersion": 2,
+      "id": "9812d04f-1ce5-43f7-919e-f68829388230"
     },
     {
       "parameters": {
-        "workflowId": "UTIL__AICall",
+        "workflowId": "n8dUKBJ3yMSedWTk",
         "mode": "each",
-        "workflowInputs": "={{ {\n  \"prompt\": `Summarize this meeting transcript.\\n\\nTranscript:\\n${$json.transcript_text}\\n\\nProvide a structured JSON response:\\n{\\n  \"title\": \"Meeting title inferred from content\",\\n  \"duration_estimate\": \"estimated duration\",\\n  \"key_points\": [\"point 1\", \"point 2\"],\\n  \"summary\": \"2-3 paragraph summary\"\\n}`,\n  \"system_message\": \"You are a meeting analyst. Create clear, actionable summaries from meeting transcripts. Focus on decisions, action items, and key discussion points.\",\n  \"model_preference\": \"large-context\",\n  \"output_format\": \"json\"\n} }}"
+        "options": {}
       },
       "name": "Summarize",
       "type": "n8n-nodes-base.executeWorkflow",
-      "position": [1000, 200],
-      "typeVersion": 1
+      "position": [
+        3664,
+        720
+      ],
+      "typeVersion": 1,
+      "id": "58bb1777-ebda-4ea3-974a-a7199bfb73d9"
     },
     {
       "parameters": {
-        "workflowId": "MEET__ExtractActions",
+        "workflowId": "4X61hx5ltgqOE8mb",
         "mode": "each",
-        "workflowInputs": "={{ {\n  \"transcript_text\": $('Extract Text').item.json.transcript_text,\n  \"meeting_metadata\": {\n    \"title\": $json.response?.title || 'Untitled',\n    \"date\": new Date().toISOString(),\n    \"filename\": $('Google Drive Trigger').item.json.name\n  }\n} }}"
+        "options": {}
       },
       "name": "Extract Actions",
       "type": "n8n-nodes-base.executeWorkflow",
-      "position": [1200, 200],
-      "typeVersion": 1
+      "position": [
+        3856,
+        720
+      ],
+      "typeVersion": 1,
+      "id": "89fa4564-7f01-4e31-b414-238cbf83bdf5"
     },
     {
       "parameters": {
-        "operation": "create",
-        "title": "=Meeting Summary — {{ $('Summarize').item.json.response?.title || 'Untitled' }} — {{ new Date().toLocaleDateString() }}",
-        "content": "={{ `Summary:\\n${$('Summarize').item.json.response?.summary || ''}\\n\\nKey Points:\\n- ${($('Summarize').item.json.response?.key_points || []).join('\\n- ')}\\n\\nAction Items:\\n${JSON.stringify($('Extract Actions').item.json.response?.actions || [])}\\n\\nDecisions:\\n${JSON.stringify($('Extract Actions').item.json.response?.decisions || [])}\\n\\nRisks:\\n${JSON.stringify($('Extract Actions').item.json.response?.risks || [])}` }}"
+        "authentication": "oAuth2",
+        "folderId": "1b7XjZHtgh7GyjUTgu3WmSKe4afpohkYR",
+        "title": "=Meeting Summary — {{ $('Summarize').item.json.response?.title || 'Untitled' }} — {{ new Date().toLocaleDateString() }}"
       },
       "name": "Create Summary Doc",
       "type": "n8n-nodes-base.googleDocs",
-      "position": [1400, 200],
+      "position": [
+        4064,
+        720
+      ],
       "typeVersion": 1,
+      "id": "bd66dfa4-f391-4395-b747-0c4f3681c15d",
       "credentials": {
         "googleDocsOAuth2Api": {
-          "id": "Google Business Ops",
-          "name": "Google Business Ops"
+          "id": "M0irLW7pgiSyGw4r",
+          "name": "Google Docs OAuth2 API"
         }
       }
     },
     {
       "parameters": {
-        "workflowId": "UTIL__SendSlackMessage",
+        "workflowId": "nERkPtt59rc5Gfbm",
         "mode": "each",
-        "workflowInputs": "={{ {\n  \"channel\": \"#meeting-summaries\",\n  \"message\": `📋 *Meeting Summary Ready*\\n*Title:* ${$('Summarize').item.json.response?.title || 'Untitled'}\\n*Key Points:* ${($('Summarize').item.json.response?.key_points || []).join(', ')}\\n*Action Items:* ${$('Extract Actions').item.json.response?.actions?.length || 0} items created\\n*Doc:* ${$('Create Summary Doc').item.json.documentUrl || 'Link unavailable'}`\n} }}"
+        "options": {}
       },
       "name": "Notify Team",
       "type": "n8n-nodes-base.executeWorkflow",
-      "position": [1600, 200],
-      "typeVersion": 1
+      "position": [
+        4256,
+        720
+      ],
+      "typeVersion": 1,
+      "id": "ff6dbf7e-697e-4429-b167-79ac833bab4c"
     },
     {
       "parameters": {
-        "workflowId": "UTIL__WriteAuditLog",
+        "content": "## Process Transcript\n",
+        "height": 464,
+        "width": 2032,
+        "color": "#D1D4FF"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        448
+      ],
+      "id": "d392218d-d9af-44c6-85c4-85325dae8307",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "workflowId": "rIRBjduPjTFXnn81",
         "mode": "each",
-        "workflowInputs": "={{ {\n  \"workflow_name\": \"MEET__ProcessTranscript\",\n  \"log_type\": \"action\",\n  \"action\": \"transcript_processed\",\n  \"status\": \"success\"\n} }}"
+        "options": {}
+      },
+      "name": "Deduplicate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        2896,
+        512
+      ],
+      "typeVersion": 1,
+      "id": "ead27ee2-3f54-475e-9fff-00ee456c8aee"
+    },
+    {
+      "parameters": {
+        "workflowId": "jCqmfSwQOsGcrJDa",
+        "mode": "each",
+        "options": {}
       },
       "name": "Audit Log",
       "type": "n8n-nodes-base.executeWorkflow",
-      "position": [1800, 200],
-      "typeVersion": 1
+      "position": [
+        4464,
+        720
+      ],
+      "typeVersion": 1,
+      "id": "d5f5a992-78b1-46cc-9ee3-5ed0dd38059c"
     }
   ],
+  "pinData": {},
   "connections": {
     "Google Drive Trigger": {
       "main": [
         [
           {
             "node": "Deduplicate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Deduplicate": {
-      "main": [
-        [
-          {
-            "node": "Skip if Duplicate",
             "type": "main",
             "index": 0
           }
@@ -240,9 +293,33 @@
           }
         ]
       ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Skip if Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
+  "active": false,
   "settings": {
-    "errorWorkflow": "ERROR__GlobalHandler"
-  }
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "aa805c37-eabd-4c4a-805d-c20b4a8e4e5c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "CpXv8Are7dDLolBo",
+  "tags": []
 }
