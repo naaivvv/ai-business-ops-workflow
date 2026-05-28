@@ -1,0 +1,149 @@
+{
+  "name": "ERROR__GlobalHandler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a869fc61-ceba-44e7-bb6c-0e4c36242cb9",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        288,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowName = $input.first().json.workflow.name;\nconst executionId = $input.first().json.execution.id;\nconst errorNode = $input.first().json.execution.error ? $input.first().json.execution.error.node : {};\nconst failedNode = errorNode.name || $input.first().json.execution.lastNodeExecuted || \"Unknown\";\nconst errorMessage = $input.first().json.execution.error ? $input.first().json.execution.error.message : \"Unknown Error\";\nconst executionLink = `https://edwin-bayog.app.n8n.cloud/workflow/executions/${executionId}`;\n\nreturn {\n  workflowName,\n  executionId,\n  failedNode,\n  errorMessage,\n  executionLink\n};"
+      },
+      "id": "a108466f-dca5-474f-85c1-6f32a0d4da3e",
+      "name": "Extract Error Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B68HMBT8U",
+          "mode": "id"
+        },
+        "text": "=🚨 *Workflow Failed*\n*Workflow:* {{$json.workflowName}}\n*Failed Node:* {{$json.failedNode}}\n*Error:* {{$json.errorMessage}}\n*Execution:* {{$json.executionLink}}",
+        "otherOptions": {}
+      },
+      "id": "c9da152b-b63b-46b6-aad5-0b4f5e411f6b",
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        -160
+      ],
+      "webhookId": "392574f4-139d-427e-9371-832abb8e3dc9",
+      "credentials": {
+        "slackApi": {
+          "id": "0QT3vEsrQsq6Pr7G",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "workflow_logs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "workflow_name",
+              "fieldValue": "={{$json.workflowName}}"
+            },
+            {
+              "fieldId": "execution_id",
+              "fieldValue": "={{$json.executionId}}"
+            },
+            {
+              "fieldId": "log_type",
+              "fieldValue": "error"
+            },
+            {
+              "fieldId": "action",
+              "fieldValue": "workflow_failed"
+            },
+            {
+              "fieldId": "error_message",
+              "fieldValue": "{{$json.errorMessage}}"
+            },
+            {
+              "fieldId": "input_payload",
+              "fieldValue": "={{JSON.stringify($('Error Trigger').first().json)}}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "failure"
+            }
+          ]
+        }
+      },
+      "id": "dfb137fa-0360-44e4-8f6a-e0e21af79fa4",
+      "name": "Log Error to Dead Letter Queue",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        720,
+        48
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Error Context": {
+      "main": [
+        [
+          {
+            "node": "Send Error Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Error to Dead Letter Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9d3eca13-e94a-4fa3-a78c-35ec046af079",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "CpXv8Are7dDLolBo",
+  "tags": []
+}

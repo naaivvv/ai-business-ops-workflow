@@ -1,0 +1,528 @@
+{
+  "name": "EMAIL__ClassifyIncoming",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {},
+        "simple": true,
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000001",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        260,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $input.first().json;\n\nreturn [{\n  json: {\n    source: \"gmail\",\n    dedup_key: email.id,\n    event_type: \"email_incoming\"\n  }\n}];"
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000002",
+      "name": "Prepare Dedup Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "={{ $env.UTIL_DEDUPLICATE_ID || 'PLACEHOLDER_UTIL_DEDUPLICATE' }}",
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000003",
+      "name": "Deduplicate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-is-duplicate",
+              "leftValue": "={{ $json.isDuplicate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000004",
+      "name": "Skip if Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $('Gmail Trigger').first().json;\nconst dedup = $('Deduplicate').first().json;\n\n// Extract sender\nconst sender = email.from || '';\nconst subject = email.subject || '(no subject)';\n\n// Get body text, strip HTML if needed\nlet body = email.textPlain || email.text || '';\nif (!body && email.textHtml) {\n  body = email.textHtml.replace(/<[^>]*>/g, '').replace(/\\s+/g, ' ').trim();\n}\nif (!body && email.html) {\n  body = email.html.replace(/<[^>]*>/g, '').replace(/\\s+/g, ' ').trim();\n}\n\n// Truncate body to prevent token overflow (first 3000 chars)\nconst truncatedBody = body.length > 3000\n  ? body.substring(0, 3000) + '...'\n  : body;\n\nreturn [{\n  json: {\n    // Email metadata\n    sender: sender,\n    subject: subject,\n    body: truncatedBody,\n    receivedDate: email.date || new Date().toISOString(),\n    messageId: email.id || '',\n    threadId: email.threadId || '',\n    hasAttachments: Array.isArray(email.attachments) && email.attachments.length > 0,\n    event_id: dedup.event_id,\n    // AI call parameters (passed through to UTIL__AICall)\n    prompt: `Classify the following email.\\n\\nFrom: ${sender}\\nSubject: ${subject}\\nBody: ${truncatedBody}\\n\\nRespond with valid JSON only (no markdown, no code fences):\\n{\\n  \"category\": \"<one of: inquiry, support, sales, internal, urgent, spam>\",\\n  \"urgency\": \"<one of: high, medium, low>\",\\n  \"confidence\": <number 0.0 to 1.0>,\\n  \"summary\": \"<brief 1-sentence summary>\",\\n  \"suggested_department\": \"<one of: sales, support, engineering, management, hr>\"\\n}`,\n    system_message: \"You are an email classifier for a business operations system. Analyze the email and classify it accurately. Be conservative with urgency — only mark 'high' for time-sensitive matters. Always respond with valid JSON only.\",\n    model_preference: \"fast\",\n    output_format: \"json\"\n  }\n}];"
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000005",
+      "name": "Extract Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "={{ $env.UTIL_AICALL_ID || 'PLACEHOLDER_UTIL_AICALL' }}",
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000006",
+      "name": "AI Classify",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json;\nconst metadata = $('Extract Metadata').first().json;\n\n// Parse the AI classification response\nlet classification;\ntry {\n  const responseText = aiResponse.response || aiResponse.text || JSON.stringify(aiResponse);\n  // Clean potential markdown code fences\n  const cleaned = responseText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  classification = typeof cleaned === 'object' ? cleaned : JSON.parse(cleaned);\n} catch (e) {\n  // Fallback if parsing fails\n  classification = {\n    category: 'internal',\n    urgency: 'medium',\n    confidence: 0.0,\n    summary: 'Classification failed — manual review required',\n    suggested_department: 'support'\n  };\n}\n\n// Validate and normalize\nconst validCategories = ['inquiry', 'support', 'sales', 'internal', 'urgent', 'spam'];\nconst validUrgencies = ['high', 'medium', 'low'];\nconst validDepts = ['sales', 'support', 'engineering', 'management', 'hr'];\n\nconst category = validCategories.includes(classification.category)\n  ? classification.category : 'internal';\nconst urgency = validUrgencies.includes(classification.urgency)\n  ? classification.urgency : 'medium';\nconst confidence = typeof classification.confidence === 'number'\n  ? Math.max(0, Math.min(1, classification.confidence)) : 0.0;\nconst suggested_department = validDepts.includes(classification.suggested_department)\n  ? classification.suggested_department : 'support';\n\nreturn [{\n  json: {\n    // Email metadata (carried forward)\n    sender: metadata.sender,\n    subject: metadata.subject,\n    body: metadata.body,\n    receivedDate: metadata.receivedDate,\n    messageId: metadata.messageId,\n    threadId: metadata.threadId,\n    hasAttachments: metadata.hasAttachments,\n    event_id: metadata.event_id,\n    // Classification results\n    category: category,\n    urgency: urgency,\n    confidence: confidence,\n    summary: classification.summary || '',\n    suggested_department: suggested_department,\n    // Full classification object for storage\n    classification: {\n      category, urgency, confidence,\n      summary: classification.summary || '',\n      suggested_department\n    },\n    // AI metadata\n    model_used: aiResponse.model_used || null,\n    ai_tokens_input: aiResponse.tokens_input || null,\n    ai_tokens_output: aiResponse.tokens_output || null,\n    ai_latency_ms: aiResponse.latency_ms || null\n  }\n}];"
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000007",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1580,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "events",
+        "matchingColumns": "id",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id",
+              "fieldValue": "={{ $json.event_id }}"
+            },
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ JSON.stringify($json.classification) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "processed_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000008",
+      "name": "Update Event",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        160
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Classification').first().json;\n\n// Map department to Slack channel\n// Initially all go to #email-routing — expand per-department later\nconst departmentChannels = {\n  sales: '#email-routing',\n  support: '#email-routing',\n  engineering: '#email-routing',\n  management: '#email-routing',\n  hr: '#email-routing'\n};\n\nconst urgencyEmoji = {\n  high: '🔴',\n  medium: '🟡',\n  low: '🟢'\n};\n\nconst channel = departmentChannels[data.suggested_department] || '#email-routing';\nconst emoji = urgencyEmoji[data.urgency] || '⚪';\n\nreturn [{\n  json: {\n    channel: channel,\n    message: `📧 *New Email Classified*\\n*From:* ${data.sender}\\n*Subject:* ${data.subject}\\n*Category:* ${data.category}\\n*Urgency:* ${emoji} ${data.urgency} (confidence: ${(data.confidence * 100).toFixed(0)}%)\\n*Department:* ${data.suggested_department}\\n*Summary:* ${data.summary}`\n  }\n}];"
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000009",
+      "name": "Route to Slack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2020,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "={{ $env.UTIL_SENDSLACKMESSAGE_ID || 'PLACEHOLDER_UTIL_SENDSLACKMESSAGE' }}",
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000010",
+      "name": "Route Notification",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2240,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-confidence",
+              "leftValue": "={{ $('Parse Classification').first().json.confidence }}",
+              "rightValue": 0.7,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000011",
+      "name": "Low Confidence?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2460,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Classification').first().json;\n\n// Flag this email for human review due to low AI confidence\nreturn [{\n  json: {\n    flagged: true,\n    reason: 'low_confidence',\n    confidence: data.confidence,\n    event_id: data.event_id,\n    sender: data.sender,\n    subject: data.subject,\n    category: data.category,\n    message: `⚠️ Low confidence classification (${(data.confidence * 100).toFixed(0)}%) needs human review.\\nFrom: ${data.sender}\\nSubject: ${data.subject}\\nCategory: ${data.category}`\n  }\n}];"
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000012",
+      "name": "Flag for Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2680,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-category-inquiry",
+              "leftValue": "={{ $('Parse Classification').first().json.category }}",
+              "rightValue": "inquiry",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "check-category-support",
+              "leftValue": "={{ $('Parse Classification').first().json.category }}",
+              "rightValue": "support",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000013",
+      "name": "Should Generate Draft?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2680,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Classification').first().json;\n\n// Prepare input for EMAIL__GenerateDraft sub-workflow\nreturn [{\n  json: {\n    email_body: data.body,\n    email_subject: data.subject,\n    sender: data.sender,\n    classification: data.classification,\n    threadId: data.threadId,\n    messageId: data.messageId,\n    event_id: data.event_id\n  }\n}];"
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000014",
+      "name": "Prepare Draft Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "={{ $env.EMAIL_GENERATEDRAFT_ID || 'PLACEHOLDER_EMAIL_GENERATEDRAFT' }}",
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000015",
+      "name": "Generate Draft",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3120,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Classification').first().json;\n\n// Prepare audit log input\nreturn [{\n  json: {\n    workflow_name: \"EMAIL__ClassifyIncoming\",\n    execution_id: $execution.id,\n    log_type: \"action\",\n    action: \"email_classified\",\n    input_payload: {\n      sender: data.sender,\n      subject: data.subject,\n      messageId: data.messageId\n    },\n    output_payload: data.classification,\n    model: data.model_used,\n    tokens_input: data.ai_tokens_input,\n    tokens_output: data.ai_tokens_output,\n    latency_ms: data.ai_latency_ms,\n    status: \"success\"\n  }\n}];"
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000016",
+      "name": "Prepare Audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2020,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "={{ $env.UTIL_WRITEAUDITLOG_ID || 'PLACEHOLDER_UTIL_WRITEAUDITLOG' }}",
+        "options": {}
+      },
+      "id": "e3f4a5b6-3333-4ccc-dddd-300000000017",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2240,
+        340
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Dedup Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Dedup Input": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Skip if Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip if Duplicate?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Extract Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Metadata": {
+      "main": [
+        [
+          {
+            "node": "AI Classify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Classify": {
+      "main": [
+        [
+          {
+            "node": "Parse Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Classification": {
+      "main": [
+        [
+          {
+            "node": "Update Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Event": {
+      "main": [
+        [
+          {
+            "node": "Route to Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to Slack": {
+      "main": [
+        [
+          {
+            "node": "Route Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Notification": {
+      "main": [
+        [
+          {
+            "node": "Low Confidence?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Low Confidence?": {
+      "main": [
+        [
+          {
+            "node": "Flag for Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Should Generate Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Generate Draft?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Draft Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Prepare Draft Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "CpXv8Are7dDLolBo"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000003",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "",
+  "tags": []
+}

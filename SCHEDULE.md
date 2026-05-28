@@ -131,7 +131,7 @@ If this exceeds one week, defer VTT/SRT format support to Week 7 and start with 
 - Build `KB__ChunkAndEmbed` sub-workflow
   - Split text into chunks (500 tokens, 50-token overlap)
   - Generate embeddings via UTIL__AICall (model_preference='embedding')
-  - Insert embeddings into `embeddings_metadata` table via Postgres node
+  - Insert embeddings into `embeddings_metadata` table via Supabase node
 - Build `KB__SemanticSearch` workflow
   - Webhook trigger (POST /api/knowledge/search)
   - Embed query via UTIL__AICall

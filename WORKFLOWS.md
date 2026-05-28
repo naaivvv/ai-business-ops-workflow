@@ -364,9 +364,11 @@ Execute Workflow (called by KB__IngestDocument).
 
 1. **Split text** into chunks using Text Splitter node (or Code node for custom logic)
 2. **Generate embeddings:** For each chunk, call UTIL__AICall with model_preference='embedding'
-3. **Insert into pgvector:** Use Postgres node to insert into `embeddings_metadata`
-   - SQL: `INSERT INTO embeddings_metadata (document_id, chunk_index, chunk_text, embedding, collection_name, embedding_model) VALUES ($1, $2, $3, $4, 'knowledge_base', 'sentence-transformers/all-MiniLM-L6-v2')`
-   - Parameters: document_id, chunk_index, chunk_text, array of embeddings
+3. **Insert into pgvector:** Use Supabase node to insert into `embeddings_metadata`
+   - Resource: Database
+   - Operation: Create
+   - Table: embeddings_metadata
+   - Map properties to JSON payload
 4. **Return chunk_count** to parent workflow
 
 ---
@@ -390,8 +392,10 @@ Webhook (POST /api/knowledge/search).
 ## Actions
 
 1. **Embed query:** Call UTIL__AICall with model_preference='embedding' to convert query to vector
-2. **Search pgvector:** Use Postgres node to call `match_documents` function
-   - SQL: `SELECT * FROM match_documents($1, 0.7, $2, 'knowledge_base')`
+2. **Search pgvector:** Use Supabase node to call `match_documents` function
+   - Resource: Database
+   - Operation: Execute RPC
+   - Function Name: match_documents
    - Return top_k most similar chunks with similarity scores
 3. **Generate answer:** Call UTIL__AICall with model_preference='fast'
    - System prompt: "Answer the question using only the provided context. If the context doesn't contain the answer, say so."

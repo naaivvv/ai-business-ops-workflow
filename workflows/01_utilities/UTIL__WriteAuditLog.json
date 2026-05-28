@@ -1,0 +1,225 @@
+{
+  "name": "UTIL__WriteAuditLog",
+  "nodes": [
+    {
+      "parameters": {
+        "inputDataMode": "defineBelow",
+        "schema": [
+          {
+            "name": "workflow_name",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "log_type",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "action",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "execution_id",
+            "type": "string"
+          },
+          {
+            "name": "input_payload",
+            "type": "object"
+          },
+          {
+            "name": "output_payload",
+            "type": "object"
+          },
+          {
+            "name": "model",
+            "type": "string"
+          },
+          {
+            "name": "tokens_input",
+            "type": "number"
+          },
+          {
+            "name": "tokens_output",
+            "type": "number"
+          },
+          {
+            "name": "latency_ms",
+            "type": "number"
+          },
+          {
+            "name": "cost_usd",
+            "type": "number"
+          },
+          {
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "name": "error_message",
+            "type": "string"
+          }
+        ]
+      },
+      "id": "b1a2c3d4-1111-4aaa-bbbb-100000000001",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Validate required fields\nconst requiredFields = ['workflow_name', 'log_type', 'action'];\nconst missing = requiredFields.filter(f => !data[f]);\n\nif (missing.length > 0) {\n  throw new Error(`Missing required fields: ${missing.join(', ')}`);\n}\n\n// Validate log_type enum\nconst validLogTypes = ['ai_call', 'action', 'error', 'audit'];\nif (!validLogTypes.includes(data.log_type)) {\n  throw new Error(`Invalid log_type: \"${data.log_type}\". Must be one of: ${validLogTypes.join(', ')}`);\n}\n\n// Validate status enum\nconst status = data.status || 'success';\nif (!['success', 'failure'].includes(status)) {\n  throw new Error(`Invalid status: \"${status}\". Must be 'success' or 'failure'`);\n}\n\n// Prepare validated output with all fields\nreturn [{\n  json: {\n    workflow_name: data.workflow_name,\n    execution_id: data.execution_id || null,\n    log_type: data.log_type,\n    action: data.action,\n    input_payload: data.input_payload\n      ? (typeof data.input_payload === 'string' ? data.input_payload : JSON.stringify(data.input_payload))\n      : null,\n    output_payload: data.output_payload\n      ? (typeof data.output_payload === 'string' ? data.output_payload : JSON.stringify(data.output_payload))\n      : null,\n    model: data.model || null,\n    tokens_input: data.tokens_input ?? null,\n    tokens_output: data.tokens_output ?? null,\n    latency_ms: data.latency_ms ?? null,\n    cost_usd: data.cost_usd ?? null,\n    status: status,\n    error_message: data.error_message || null\n  }\n}];"
+      },
+      "id": "b1a2c3d4-1111-4aaa-bbbb-100000000002",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "workflow_logs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "workflow_name",
+              "fieldValue": "={{$json.workflow_name}}"
+            },
+            {
+              "fieldId": "execution_id",
+              "fieldValue": "={{$json.execution_id}}"
+            },
+            {
+              "fieldId": "log_type",
+              "fieldValue": "={{$json.log_type}}"
+            },
+            {
+              "fieldId": "action",
+              "fieldValue": "={{$json.action}}"
+            },
+            {
+              "fieldId": "input_payload",
+              "fieldValue": "={{$json.input_payload}}"
+            },
+            {
+              "fieldId": "output_payload",
+              "fieldValue": "={{$json.output_payload}}"
+            },
+            {
+              "fieldId": "model",
+              "fieldValue": "={{$json.model}}"
+            },
+            {
+              "fieldId": "tokens_input",
+              "fieldValue": "={{$json.tokens_input}}"
+            },
+            {
+              "fieldId": "tokens_output",
+              "fieldValue": "={{$json.tokens_output}}"
+            },
+            {
+              "fieldId": "latency_ms",
+              "fieldValue": "={{$json.latency_ms}}"
+            },
+            {
+              "fieldId": "cost_usd",
+              "fieldValue": "={{$json.cost_usd}}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{$json.status}}"
+            },
+            {
+              "fieldId": "error_message",
+              "fieldValue": "={{$json.error_message}}"
+            }
+          ]
+        }
+      },
+      "id": "b1a2c3d4-1111-4aaa-bbbb-100000000003",
+      "name": "Insert Log",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        700,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\n\nreturn [{\n  json: {\n    success: true,\n    log_id: result.id || null\n  }\n}];"
+      },
+      "id": "b1a2c3d4-1111-4aaa-bbbb-100000000004",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Insert Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Log": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "any",
+    "errorWorkflow": "CpXv8Are7dDLolBo"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000001",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "",
+  "tags": []
+}

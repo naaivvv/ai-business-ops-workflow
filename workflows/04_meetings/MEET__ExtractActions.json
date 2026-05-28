@@ -1,0 +1,270 @@
+{
+  "name": "MEET__ExtractActions",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "prompt",
+              "value": "Extract action items, decisions, and risks from this meeting transcript.\n\nTranscript:\n{{ $json.transcript_text }}\n\nRespond with JSON:\n{\n  \"action_items\": [\n    { \"description\": \"...\", \"owner\": \"person name or null\", \"deadline\": \"date or null\", \"priority\": \"high/medium/low\" }\n  ],\n  \"decisions\": [\n    { \"decision\": \"...\", \"context\": \"...\" }\n  ],\n  \"risks\": [\n    { \"risk\": \"...\", \"severity\": \"high/medium/low\" }\n  ]\n}"
+            },
+            {
+              "name": "system_message",
+              "value": "You are a meeting analyst. Extract concrete, actionable items with specific owners and deadlines when mentioned. Be precise — only extract real commitments, not vague discussions."
+            },
+            {
+              "name": "model_preference",
+              "value": "fast"
+            },
+            {
+              "name": "output_format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set_ai_input",
+      "name": "Prepare AI Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__AICall"
+      },
+      "id": "ai_extract",
+      "name": "AI Extract",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $json.response || $json.content || '{}';\nlet parsed = { action_items: [], decisions: [], risks: [] };\ntry {\n  const jsonStr = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();\n  parsed = JSON.parse(jsonStr);\n} catch (e) {}\n\nreturn { json: parsed };"
+      },
+      "id": "parse_results",
+      "name": "Parse Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-id",
+              "leftValue": "={{ $json.action_items && $json.action_items.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if_has_actions",
+      "name": "IF has actions",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 3,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "action_items",
+        "options": {}
+      },
+      "id": "split_actions",
+      "name": "Split Action Items",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [1000, -100]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "loop_tasks",
+      "name": "Create Tasks",
+      "type": "n8n-nodes-base.loop",
+      "typeVersion": 1,
+      "position": [1200, -100]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "tasks",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.description ? $json.description.substring(0, 50) + '...' : 'New Action Item' }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ $json.description }}"
+            },
+            {
+              "fieldId": "priority",
+              "fieldValue": "={{ $json.priority || 'medium' }}"
+            },
+            {
+              "fieldId": "source_event_id",
+              "fieldValue": "={{ $('When Executed by Another Workflow').first().json.meeting_metadata?.title || 'Unknown Meeting' }}"
+            },
+            {
+              "fieldId": "deadline",
+              "fieldValue": "={{ $json.deadline }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "open"
+            }
+          ]
+        }
+      },
+      "id": "supabase_insert",
+      "name": "Supabase node",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1400, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const parsed = $('Parse Results').first().json;\n\nlet taskIds = [];\ntry {\n  const supabaseItems = $('Supabase node').all();\n  if (supabaseItems && supabaseItems.length > 0) {\n    taskIds = supabaseItems.map(item => item.json.id).filter(id => id !== undefined);\n  }\n} catch(e) {}\n\nreturn {\n  json: {\n    action_items_count: parsed.action_items ? parsed.action_items.length : 0,\n    decisions_count: parsed.decisions ? parsed.decisions.length : 0,\n    risks_count: parsed.risks ? parsed.risks.length : 0,\n    task_ids: taskIds\n  }\n};"
+      },
+      "id": "return_results",
+      "name": "Return Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 100]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Input": {
+      "main": [
+        [
+          {
+            "node": "AI Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Extract": {
+      "main": [
+        [
+          {
+            "node": "Parse Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Results": {
+      "main": [
+        [
+          {
+            "node": "IF has actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF has actions": {
+      "main": [
+        [
+          {
+            "node": "Split Action Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Action Items": {
+      "main": [
+        [
+          {
+            "node": "Create Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Tasks": {
+      "main": [
+        [
+          {
+            "node": "Supabase node",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase node": {
+      "main": [
+        [
+          {
+            "node": "Create Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "callerPolicy": "any",
+    "errorWorkflow": "ERROR__GlobalHandler"
+  }
+}

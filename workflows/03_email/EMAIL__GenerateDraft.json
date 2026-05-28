@@ -1,0 +1,158 @@
+{
+  "name": "EMAIL__GenerateDraft",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "execute-workflow-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  let body = item.json.email_body || '';\n  \n  let newBody = body\n    .replace(/\\b\\d{3}-\\d{2}-\\d{4}\\b/g, '[REDACTED]')\n    .replace(/\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b/g, '[REDACTED]')\n    .replace(/\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b/g, '[REDACTED]');\n  \n  item.json.hasPII = (newBody !== body);\n  item.json.sanitized_body = newBody;\n}\nreturn $input.all();"
+      },
+      "name": "PII Check",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        220,
+        0
+      ],
+      "typeVersion": 2,
+      "id": "pii-check"
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__AICall",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"prompt\": `Generate a professional reply draft for this email.\\n\\nOriginal Email:\\nFrom: ${$json.sender}\\nSubject: ${$json.email_subject}\\nBody: ${$json.sanitized_body}\\n\\nClassification: ${$json.classification?.category || ''}, Urgency: ${$json.classification?.urgency || ''}\\n\\nWrite a helpful, professional reply. Keep it concise. Do not include any sensitive personal information.`,\n  \"system_message\": \"You are a professional email assistant. Write clear, helpful email replies that match the business tone. Always be polite and solution-oriented. Never include information you don't have — if unsure, suggest the person contact the relevant department.\",\n  \"model_preference\": \"fast\",\n  \"output_format\": \"text\"\n} }}"
+      },
+      "name": "Generate Reply",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        440,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "generate-reply"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "subject": "=Re: {{ $('Execute Workflow Trigger').item.json.email_subject.replace(/^Re:\\s*/i, '') }}",
+        "message": "={{ $json.response }}",
+        "toList": "={{ $('Execute Workflow Trigger').item.json.sender }}"
+      },
+      "name": "Create Draft",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        660,
+        0
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      },
+      "id": "create-draft"
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__SendSlackMessage",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"channel\": \"#email-routing\",\n  \"message\": `📝 *AI Draft Ready for Review*\\n*To:* ${$('Execute Workflow Trigger').item.json.sender}\\n*Subject:* Re: ${$('Execute Workflow Trigger').item.json.email_subject.replace(/^Re:\\s*/i, '')}\\n*Category:* ${$('Execute Workflow Trigger').item.json.classification?.category || ''}\\n\\n*Draft Preview:*\\n>>> ${$('Generate Reply').item.json.response?.substring(0, 200)}...\\n\\n✅ Review and send from your Gmail Drafts folder`\n} }}"
+      },
+      "name": "Notify Reviewer",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        880,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "notify-reviewer"
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"workflow_name\": \"EMAIL__GenerateDraft\",\n  \"log_type\": \"action\",\n  \"action\": \"draft_created\",\n  \"status\": \"success\"\n} }}"
+      },
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        1100,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "audit-log"
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "PII Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PII Check": {
+      "main": [
+        [
+          {
+            "node": "Generate Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Reply": {
+      "main": [
+        [
+          {
+            "node": "Create Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Draft": {
+      "main": [
+        [
+          {
+            "node": "Notify Reviewer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Reviewer": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "callerPolicy": "any",
+    "errorWorkflow": "ERROR__GlobalHandler"
+  }
+}

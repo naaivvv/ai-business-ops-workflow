@@ -1,0 +1,248 @@
+{
+  "name": "MEET__ProcessTranscript",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "triggerOn": "fileCreated",
+        "folderId": "YOUR_FOLDER_ID_HERE_FROM_PROMPT_0_8"
+      },
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "position": [0, 0],
+      "typeVersion": 1,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__Deduplicate",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"source\": \"drive\",\n  \"dedup_key\": $json.id,\n  \"event_type\": \"meeting_transcript\"\n} }}"
+      },
+      "name": "Deduplicate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [200, 0],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isDuplicate }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Skip if Duplicate",
+      "type": "n8n-nodes-base.if",
+      "position": [400, 0],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $('Google Drive Trigger').item.json.id }}"
+      },
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [600, 200],
+      "typeVersion": 2,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  const fileName = $('Google Drive Trigger').item.json.name || '';\n  let text = '';\n\n  // Detect file type and extract text\n  if (item.binary && item.binary.data) {\n    if (fileName.endsWith('.docx')) {\n      // Use n8n's built-in binary parsing or assume binary data provides parsed text \n      text = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n    } else {\n      // For .txt, Google Docs (exported as text), .vtt, .srt\n      text = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n    }\n  } else {\n    text = item.json.content || item.json.text || '';\n  }\n\n  // Strip timestamps for subtitle files\n  if (fileName.endsWith('.vtt') || fileName.endsWith('.srt')) {\n    text = text.replace(/\\d{2}:\\d{2}:\\d{2}[.,]\\d{3}\\s*-->\\s*\\d{2}:\\d{2}:\\d{2}[.,]\\d{3}/g, '')\n               .replace(/^\\d+$/gm, '')\n               .replace(/\\n{3,}/g, '\\n\\n');\n  }\n\n  item.json.transcript_text = text;\n}\nreturn $input.all();"
+      },
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.code",
+      "position": [800, 200],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__AICall",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"prompt\": `Summarize this meeting transcript.\\n\\nTranscript:\\n${$json.transcript_text}\\n\\nProvide a structured JSON response:\\n{\\n  \"title\": \"Meeting title inferred from content\",\\n  \"duration_estimate\": \"estimated duration\",\\n  \"key_points\": [\"point 1\", \"point 2\"],\\n  \"summary\": \"2-3 paragraph summary\"\\n}`,\n  \"system_message\": \"You are a meeting analyst. Create clear, actionable summaries from meeting transcripts. Focus on decisions, action items, and key discussion points.\",\n  \"model_preference\": \"large-context\",\n  \"output_format\": \"json\"\n} }}"
+      },
+      "name": "Summarize",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [1000, 200],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "workflowId": "MEET__ExtractActions",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"transcript_text\": $('Extract Text').item.json.transcript_text,\n  \"meeting_metadata\": {\n    \"title\": $json.response?.title || 'Untitled',\n    \"date\": new Date().toISOString(),\n    \"filename\": $('Google Drive Trigger').item.json.name\n  }\n} }}"
+      },
+      "name": "Extract Actions",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [1200, 200],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "title": "=Meeting Summary — {{ $('Summarize').item.json.response?.title || 'Untitled' }} — {{ new Date().toLocaleDateString() }}",
+        "content": "={{ `Summary:\\n${$('Summarize').item.json.response?.summary || ''}\\n\\nKey Points:\\n- ${($('Summarize').item.json.response?.key_points || []).join('\\n- ')}\\n\\nAction Items:\\n${JSON.stringify($('Extract Actions').item.json.response?.actions || [])}\\n\\nDecisions:\\n${JSON.stringify($('Extract Actions').item.json.response?.decisions || [])}\\n\\nRisks:\\n${JSON.stringify($('Extract Actions').item.json.response?.risks || [])}` }}"
+      },
+      "name": "Create Summary Doc",
+      "type": "n8n-nodes-base.googleDocs",
+      "position": [1400, 200],
+      "typeVersion": 1,
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "Google Business Ops",
+          "name": "Google Business Ops"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__SendSlackMessage",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"channel\": \"#meeting-summaries\",\n  \"message\": `📋 *Meeting Summary Ready*\\n*Title:* ${$('Summarize').item.json.response?.title || 'Untitled'}\\n*Key Points:* ${($('Summarize').item.json.response?.key_points || []).join(', ')}\\n*Action Items:* ${$('Extract Actions').item.json.response?.actions?.length || 0} items created\\n*Doc:* ${$('Create Summary Doc').item.json.documentUrl || 'Link unavailable'}`\n} }}"
+      },
+      "name": "Notify Team",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [1600, 200],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "workflowId": "UTIL__WriteAuditLog",
+        "mode": "each",
+        "workflowInputs": "={{ {\n  \"workflow_name\": \"MEET__ProcessTranscript\",\n  \"log_type\": \"action\",\n  \"action\": \"transcript_processed\",\n  \"status\": \"success\"\n} }}"
+      },
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [1800, 200],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Skip if Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip if Duplicate": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Extract Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Actions": {
+      "main": [
+        [
+          {
+            "node": "Create Summary Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Summary Doc": {
+      "main": [
+        [
+          {
+            "node": "Notify Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Team": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "errorWorkflow": "ERROR__GlobalHandler"
+  }
+}

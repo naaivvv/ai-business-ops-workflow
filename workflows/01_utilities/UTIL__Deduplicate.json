@@ -1,0 +1,248 @@
+{
+  "name": "UTIL__Deduplicate",
+  "nodes": [
+    {
+      "parameters": {
+        "inputDataMode": "defineBelow",
+        "schema": [
+          {
+            "name": "source",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "dedup_key",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "event_type",
+            "type": "string",
+            "required": true
+          }
+        ]
+      },
+      "id": "c2d3e4f5-2222-4bbb-cccc-200000000001",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst data = $input.first().json;\n\n// Validate required fields\nconst requiredFields = ['source', 'dedup_key', 'event_type'];\nconst missing = requiredFields.filter(f => !data[f]);\n\nif (missing.length > 0) {\n  throw new Error(`Missing required fields: ${missing.join(', ')}`);\n}\n\n// Validate source enum\nconst validSources = ['gmail', 'drive', 'webhook', 'form'];\nif (!validSources.includes(data.source)) {\n  throw new Error(`Invalid source: \"${data.source}\". Must be one of: ${validSources.join(', ')}`);\n}\n\n// Compute SHA-256 hash of source + \"|\" + dedup_key\nconst dedup_hash = crypto\n  .createHash('sha256')\n  .update(data.source + '|' + data.dedup_key)\n  .digest('hex');\n\nreturn [{\n  json: {\n    source: data.source,\n    dedup_key: data.dedup_key,\n    event_type: data.event_type,\n    dedup_hash: dedup_hash\n  }\n}];"
+      },
+      "id": "c2d3e4f5-2222-4bbb-cccc-200000000002",
+      "name": "Compute Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "events",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "string",
+        "filterString": "dedup_hash=eq.{{ $json.dedup_hash }}"
+      },
+      "id": "c2d3e4f5-2222-4bbb-cccc-200000000003",
+      "name": "Check Existing",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        700,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "dedup-check",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c2d3e4f5-2222-4bbb-cccc-200000000004",
+      "name": "Is Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Duplicate found — return the existing event ID\nconst existing = $('Check Existing').first().json;\n\nreturn [{\n  json: {\n    isDuplicate: true,\n    existing_event_id: existing.id\n  }\n}];"
+      },
+      "id": "c2d3e4f5-2222-4bbb-cccc-200000000005",
+      "name": "Return Duplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "event_type",
+              "fieldValue": "={{ $('Compute Hash').first().json.event_type }}"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "={{ $('Compute Hash').first().json.source }}"
+            },
+            {
+              "fieldId": "dedup_hash",
+              "fieldValue": "={{ $('Compute Hash').first().json.dedup_hash }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "processing"
+            }
+          ]
+        }
+      },
+      "id": "c2d3e4f5-2222-4bbb-cccc-200000000006",
+      "name": "Insert Event",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// New event inserted — return the new event ID\nconst result = $input.first().json;\n\nreturn [{\n  json: {\n    isDuplicate: false,\n    event_id: result.id\n  }\n}];"
+      },
+      "id": "c2d3e4f5-2222-4bbb-cccc-200000000007",
+      "name": "Return New",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        120
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Compute Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Hash": {
+      "main": [
+        [
+          {
+            "node": "Check Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Return Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Event": {
+      "main": [
+        [
+          {
+            "node": "Return New",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "any",
+    "errorWorkflow": "CpXv8Are7dDLolBo"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000002",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "",
+  "tags": []
+}

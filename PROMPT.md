@@ -581,7 +581,7 @@ Open n8n at `https://edwin-bayog.app.n8n.cloud/` → **Credentials** and create 
 | 2 | Slack API | `Slack Business Ops Bot` | Bot token from PROMPT 0.3 |
 | 3 | Header Auth | `OpenRouter API` | API key from PROMPT 0.4 |
 | 4 | Hugging Face Inference API | `Hugging Face Embeddings` | API key from PROMPT 0.5 |
-| 5 | Postgres | `Postgres Operations` | Use your Supabase connection string. |
+| 5 | Postgres | `Supabase API` | Use your Supabase connection string. |
 
 ### Verification Checklist
 
@@ -635,12 +635,12 @@ NODE 2 — Slack node "Send Error Alert":
   *Error:* {{ errorMessage }}
   *Execution:* {{ executionLink }}"
 
-NODE 3 — Postgres node "Log Error to Dead Letter Queue":
-- Credential: Postgres Operations
-- Operation: Execute Query
-- SQL:
-  INSERT INTO workflow_logs (workflow_name, execution_id, log_type, action, error_message, input_payload, status)
-  VALUES ('{{ workflowName }}', '{{ executionId }}', 'error', 'workflow_failed', '{{ errorMessage }}', '{{ JSON.stringify($input) }}', 'failure')
+NODE 3 — Supabase node "Log Error to Dead Letter Queue":
+- Credential: Supabase API
+- Resource: Database
+- Operation: Create
+- Table: workflow_logs
+- Map properties to JSON payload }}', 'failure')
 
 Settings:
 - This workflow should be ACTIVE
@@ -701,15 +701,12 @@ NODE 1 — Code node "Validate Input":
 - Check that workflow_name, log_type, and action are present
 - If missing, return error response
 
-NODE 2 — Postgres node "Insert Log":
-- Credential: Postgres Operations
-- Operation: Execute Query
-- SQL:
-  INSERT INTO workflow_logs
-    (workflow_name, execution_id, log_type, action, input_payload, output_payload,
-     model, tokens_input, tokens_output, latency_ms, cost_usd, status, error_message)
-  VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+NODE 2 — Supabase node "Insert Log":
+- Credential: Supabase API
+- Resource: Database
+- Operation: Create
+- Table: workflow_logs
+- Map properties to JSON payload
 - Use parameterized query with values from the input
 
 NODE 3 — Code node "Return Result":
@@ -905,8 +902,8 @@ NODE 1 — Code node "Compute Hash":
 - Compute SHA-256 hash of: source + "|" + dedup_key
 - Use Node.js crypto: require('crypto').createHash('sha256').update(source + '|' + dedup_key).digest('hex')
 
-NODE 2 — Postgres node "Check Existing":
-- Credential: Postgres Operations
+NODE 2 — Supabase node "Check Existing":
+- Credential: Supabase API
 - Operation: Execute Query
 - SQL: SELECT id FROM events WHERE dedup_hash = $1
 - Parameters: [computed_hash]
@@ -917,7 +914,7 @@ NODE 3 — IF node "Is Duplicate?":
 NODE 4A (duplicate path) — Code node "Return Duplicate":
 - Return: { isDuplicate: true, existing_event_id: result[0].id }
 
-NODE 4B (new event path) — Postgres node "Insert Event":
+NODE 4B (new event path) — Supabase node "Insert Event":
 - SQL:
   INSERT INTO events (event_type, source, dedup_hash, status)
   VALUES ($1, $2, $3, 'processing')
@@ -994,7 +991,7 @@ NODE 5 — Code node "Parse Classification":
 - Parse the AI JSON response
 - Extract: category, urgency, confidence, summary, suggested_department
 
-NODE 6 — Postgres node "Update Event":
+NODE 6 — Supabase node "Update Event":
 - SQL:
   UPDATE events SET
     payload = $1,
@@ -1241,7 +1238,7 @@ NODE 2 — Code node "Parse Results":
 
 NODE 3 — Loop node "Create Tasks":
 - For each action_item:
-  - Postgres node: INSERT INTO tasks (title, description, priority, source_event_id, deadline, status)
+  - Supabase node: INSERT INTO tasks (title, description, priority, source_event_id, deadline, status)
     VALUES ($1, $2, $3, $4, $5, 'open')
 
 NODE 4 — Code node "Return Results":
@@ -1303,7 +1300,7 @@ NODE 5 — Code node "Compute Content Hash":
 - const hash = require('crypto').createHash('sha256').update(text).digest('hex');
 - Also extract: title from filename, source_type from mimeType
 
-NODE 6 — Postgres node "Check Existing Document":
+NODE 6 — Supabase node "Check Existing Document":
 - SQL: SELECT id, content_hash FROM documents WHERE source_file_id = $1
 - Parameters: [drive_file_id]
 
@@ -1312,11 +1309,11 @@ NODE 7 — IF node "Document Changed?":
 - Existing row, same hash → skip (no changes)
 - Existing row, different hash → update path (delete old vectors first)
 
-NODE 8 (update path) — Postgres node "Delete Old Embeddings Metadata":
+NODE 8 (update path) — Supabase node "Delete Old Embeddings Metadata":
 - SQL: DELETE FROM embeddings_metadata WHERE document_id = $1
 - Note: This will automatically delete the vectors from pgvector since they are stored in the same table.
 
-NODE 9 — Postgres node "Upsert Document":
+NODE 9 — Supabase node "Upsert Document":
 - SQL:
   INSERT INTO documents (title, source_type, source_url, source_file_id, content_hash, status)
   VALUES ($1, $2, $3, $4, $5, 'processing')
@@ -1328,7 +1325,7 @@ NODE 10 — Execute Workflow node "Chunk and Embed":
 - Call: KB__ChunkAndEmbed
 - Input: { document_id, text_content, collection_name: "knowledge_base" }
 
-NODE 11 — Postgres node "Mark Complete":
+NODE 11 — Supabase node "Mark Complete":
 - SQL: UPDATE documents SET status = 'completed', chunk_count = $1, processed_at = NOW() WHERE id = $2
 
 NODE 12 — Execute Workflow node "Audit Log"
@@ -1382,12 +1379,12 @@ NODE 2 — Loop Over Items node "Process Each Chunk":
   - Call: UTIL__AICall
   - Input: { prompt: chunk_text, model_preference: "embedding" }
 
-  NODE 2B — Postgres node "Insert Embedding":
-  - Credential: Postgres Operations
-  - Operation: Execute Query
-  - SQL:
-    INSERT INTO embeddings_metadata (document_id, chunk_index, chunk_text, embedding, collection_name, embedding_model)
-    VALUES ($1, $2, $3, $4, 'knowledge_base', 'sentence-transformers/all-MiniLM-L6-v2')
+  NODE 2B — Supabase node "Insert Embedding":
+  - Credential: Supabase API
+  - Resource: Database
+- Operation: Create
+- Table: embeddings_metadata
+- Map properties to JSON payload
   - Parameters: [document_id, chunk_index, chunk_text, '[embedding_array_from_step_2A]']
 
 NODE 3 — Code node "Return Count":
@@ -1437,7 +1434,7 @@ NODE 2 — Execute Workflow node "Embed Query":
 - Call: UTIL__AICall
 - Input: { prompt: query, model_preference: "embedding" }
 
-NODE 3 — Postgres node "Semantic Search (pgvector)":
+NODE 3 — Supabase node "Semantic Search (pgvector)":
 - SQL: SELECT * FROM match_documents($1, 0.7, $2, 'knowledge_base')
 - Parameters: ['[embedding_array_from_step_2]', top_k]
 
@@ -1512,12 +1509,12 @@ EXPECTED INPUT:
   "source_event_id": "uuid-of-originating-event"
 }
 
-NODE 1 — Postgres node "Resolve User":
+NODE 1 — Supabase node "Resolve User":
 - SQL: SELECT id, slack_user_id FROM users WHERE email = $1
 - Parameters: [assigned_to]
 - If no user found, use NULL for assigned_to UUID
 
-NODE 2 — Postgres node "Insert Task":
+NODE 2 — Supabase node "Insert Task":
 - SQL:
   INSERT INTO tasks (title, description, assigned_to, priority, deadline, source_event_id, status)
   VALUES ($1, $2, $3, $4, $5, $6, 'open')
@@ -1563,7 +1560,7 @@ Create an n8n workflow named "TASK__SendReminders" with the following:
 TRIGGER: Cron node
 - Expression: 0 9 * * * (every day at 9:00 AM)
 
-NODE 1 — Postgres node "Query Upcoming Tasks":
+NODE 1 — Supabase node "Query Upcoming Tasks":
 - SQL:
   SELECT t.*, u.name, u.email, u.slack_user_id
   FROM tasks t
@@ -1573,7 +1570,7 @@ NODE 1 — Postgres node "Query Upcoming Tasks":
   AND t.deadline BETWEEN NOW() AND NOW() + INTERVAL '48 hours'
   ORDER BY t.deadline ASC
 
-NODE 2 — Postgres node "Query Overdue Tasks":
+NODE 2 — Supabase node "Query Overdue Tasks":
 - SQL:
   SELECT t.*, u.name, u.email, u.slack_user_id
   FROM tasks t
@@ -1627,7 +1624,7 @@ Create an n8n workflow named "TASK__Escalate" with the following:
 TRIGGER: Cron node
 - Expression: 0 * * * * (every hour)
 
-NODE 1 — Postgres node "Query Overdue Unescalated":
+NODE 1 — Supabase node "Query Overdue Unescalated":
 - SQL:
   SELECT t.*, u.name as assignee_name, u.email as assignee_email,
          m.slack_user_id as manager_slack_id, m.name as manager_name
@@ -1644,7 +1641,7 @@ NODE 2 — IF node "Any Tasks to Escalate?":
 NODE 3 — Loop node "Escalate Each":
   For each task:
 
-  NODE 3A — Postgres node "Mark Escalated":
+  NODE 3A — Supabase node "Mark Escalated":
   - SQL:
     UPDATE tasks SET escalated_at = NOW(), priority = 'critical', updated_at = NOW()
     WHERE id = $1
@@ -1693,10 +1690,10 @@ Create an n8n workflow named "REPORT__DailySummary" with the following:
 TRIGGER: Cron node
 - Expression: 0 8 * * * (every day at 8:00 AM)
 
-NODE 1 — Postgres node "Emails Processed":
+NODE 1 — Supabase node "Emails Processed":
 - SQL: SELECT COUNT(*) as count FROM events WHERE event_type = 'email_incoming' AND created_at > NOW() - INTERVAL '24 hours'
 
-NODE 2 — Postgres node "Tasks Metrics":
+NODE 2 — Supabase node "Tasks Metrics":
 - SQL:
   SELECT
     COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as created,
@@ -1704,7 +1701,7 @@ NODE 2 — Postgres node "Tasks Metrics":
     COUNT(*) FILTER (WHERE status = 'open' AND deadline < NOW()) as overdue
   FROM tasks
 
-NODE 3 — Postgres node "AI Usage":
+NODE 3 — Supabase node "AI Usage":
 - SQL:
   SELECT
     COUNT(*) as total_calls,
@@ -1715,10 +1712,10 @@ NODE 3 — Postgres node "AI Usage":
   FROM workflow_logs
   WHERE log_type = 'ai_call' AND created_at > NOW() - INTERVAL '24 hours'
 
-NODE 4 — Postgres node "Errors Count":
+NODE 4 — Supabase node "Errors Count":
 - SQL: SELECT COUNT(*) as count FROM workflow_logs WHERE log_type = 'error' AND created_at > NOW() - INTERVAL '24 hours'
 
-NODE 5 — Postgres node "Approvals Status":
+NODE 5 — Supabase node "Approvals Status":
 - SQL:
   SELECT
     COUNT(*) FILTER (WHERE status = 'pending') as pending,
@@ -1778,7 +1775,7 @@ TRIGGER: Cron node
 
 NODE 1–5: Same metric queries as REPORT__DailySummary but with INTERVAL '7 days'
 
-NODE 6 — Postgres node "Last Week Comparison":
+NODE 6 — Supabase node "Last Week Comparison":
 - Query the same metrics for the PREVIOUS week (8-14 days ago)
 - This enables trend analysis (this week vs. last week)
 
@@ -1977,7 +1974,7 @@ FINAL VERIFICATION CHECKLIST:
 Infrastructure:
 [ ] n8n Cloud accessible at https://edwin-bayog.app.n8n.cloud/
 [ ] PostgreSQL has all 7 tables (local Docker, Supabase, or Neon)
-[ ] n8n Cloud can connect to PostgreSQL (test with a Postgres node)
+[ ] n8n Cloud can connect to PostgreSQL (test with a Supabase node)
 
 (Self-hosted only:)
 [ ] All 5 Docker containers healthy (docker compose ps)
