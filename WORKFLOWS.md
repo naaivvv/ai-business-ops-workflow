@@ -535,6 +535,28 @@ Cron (Monday at 9:00 AM).
 
 ---
 
+# Drive Workflows
+
+---
+
+# 19. DRIVE__ProcessUpload
+
+## Trigger
+
+Google Drive Trigger: watches a general folder (e.g. Inbox or Uploads) for new file creations.
+
+## Actions
+
+1. **Deduplicate:** Call UTIL__Deduplicate to ensure the file hasn't been processed.
+2. **Skip if Duplicate:** Halt execution if already processed.
+3. **Download and Extract text:** Fetch the file and extract its content.
+4. **Classify & Summarize:** Call UTIL__AICall to classify the document type and generate a summary.
+5. **Store Event:** Write the event into the Supabase `events` table for traceability.
+6. **Notify Team:** Send a message to Slack via UTIL__SendSlackMessage with the classification and summary.
+7. **Audit Log:** Log the successful execution via UTIL__WriteAuditLog.
+
+---
+
 # Approval Handling
 
 > **Important:** Approval/wait logic must be kept in the **main workflow**, never in sub-workflows. Sub-workflows containing Wait or Human-in-the-Loop nodes do not correctly return output to the parent workflow — the parent will hang or receive empty data.

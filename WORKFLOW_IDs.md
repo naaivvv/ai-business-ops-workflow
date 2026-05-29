@@ -10,6 +10,8 @@ https://drive.google.com/drive/u/0/folders/1FDviUefWBnLwtiszKdovh9yfuFU4Vzin - W
 
 https://drive.google.com/drive/u/0/folders/1ap6B6qWulyByVhsTQSdAnJApFj9Qk-lU - Business Ops Reports
 
+https://drive.google.com/drive/u/0/folders/1CGfwFWsFLFIE6pgsgge57l8tjn5_sNYK - General-Uploads
+
 MEET__ProcessTranscript = CpXv8Are7dDLolBo
 
 MEET__ExtractActions - 4X61hx5ltgqOE8mb

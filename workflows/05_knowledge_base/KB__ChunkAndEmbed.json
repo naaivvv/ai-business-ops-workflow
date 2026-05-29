@@ -8,21 +8,21 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -416,
-        416
+        0,
+        480
       ]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\n\nitems.forEach(item => {\n  const textContent = item.json.text_content || '';\n  const documentId = item.json.document_id;\n  const collectionName = item.json.collection_name || 'knowledge_base';\n  \n  const paragraphs = textContent.split('\\n\\n');\n  const MAX_CHARS = 2000;\n  const OVERLAP_CHARS = 200;\n  \n  let currentChunk = '';\n  let chunkIndex = 0;\n  \n  for (let i = 0; i < paragraphs.length; i++) {\n    const p = paragraphs[i];\n    \n    if ((currentChunk.length + p.length) > MAX_CHARS && currentChunk.length > 0) {\n      // Save current chunk\n      results.push({\n        json: {\n          chunk_index: chunkIndex++,\n          chunk_text: currentChunk.trim(),\n          document_id: documentId,\n          collection_name: collectionName\n        }\n      });\n      \n      // Start new chunk with overlap\n      let overlapText = currentChunk.slice(-OVERLAP_CHARS);\n      const lastSpace = overlapText.indexOf(' ');\n      if (lastSpace !== -1 && lastSpace < OVERLAP_CHARS / 2) {\n         overlapText = overlapText.slice(lastSpace + 1);\n      }\n      currentChunk = overlapText + '\\n\\n' + p;\n    } else {\n      currentChunk += (currentChunk ? '\\n\\n' : '') + p;\n    }\n  }\n  \n  if (currentChunk.trim().length > 0) {\n    results.push({\n      json: {\n        chunk_index: chunkIndex++,\n        chunk_text: currentChunk.trim(),\n        document_id: documentId,\n        collection_name: collectionName\n      }\n    });\n  }\n});\n\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nitems.forEach(item => {\n  const textContent = item.json.text_content || '';\n  const documentId = item.json.document_id;\n  const collectionName = item.json.collection_name || 'knowledge_base';\n  \n  const paragraphs = textContent.split('\\n\\n');\n  const MAX_CHARS = 2000;\n  const OVERLAP_CHARS = 200;\n  \n  let currentChunk = '';\n  let chunkIndex = 0;\n  \n  for (let i = 0; i < paragraphs.length; i++) {\n    const p = paragraphs[i];\n    \n    if ((currentChunk.length + p.length) > MAX_CHARS && currentChunk.length > 0) {\n      results.push({\n        json: {\n          chunk_index: chunkIndex++,\n          chunk_text: currentChunk.trim(),\n          document_id: documentId,\n          collection_name: collectionName\n        }\n      });\n      \n      let overlapText = currentChunk.slice(-OVERLAP_CHARS);\n      const lastSpace = overlapText.indexOf(' ');\n      if (lastSpace !== -1 && lastSpace < OVERLAP_CHARS / 2) {\n         overlapText = overlapText.slice(lastSpace + 1);\n      }\n      currentChunk = overlapText + '\\n\\n' + p;\n    } else {\n      currentChunk += (currentChunk ? '\\n\\n' : '') + p;\n    }\n  }\n  \n  if (currentChunk.trim().length > 0) {\n    results.push({\n      json: {\n        chunk_index: chunkIndex++,\n        chunk_text: currentChunk.trim(),\n        document_id: documentId,\n        collection_name: collectionName\n      }\n    });\n  }\n});\n\nreturn results;"
       },
       "id": "ca8b06a8-b060-487f-a554-4661503cceca",
       "name": "Chunk Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -192,
-        416
+        240,
+        480
       ]
     },
     {
@@ -33,10 +33,10 @@
       "id": "ab012f26-e5f1-4e9e-8421-c619629db060",
       "name": "Process Each Chunk",
       "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 1,
+      "typeVersion": 3,
       "position": [
-        32,
-        320
+        480,
+        480
       ]
     },
     {
@@ -48,8 +48,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -640,
-        224
+        720,
+        480
       ]
     },
     {
@@ -62,34 +62,52 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        -416,
-        224
+        960,
+        480
       ]
     },
     {
       "parameters": {
+        "jsCode": "const embeddingResponse = $json.response;\nconst chunkData = $('Process Each Chunk').first().json;\n\n// UTIL__AICall returns the raw Hugging Face response for embeddings.\n// Hugging Face feature-extraction returns [[0.1, 0.2, ...]] (nested array).\n// We need to extract the inner array and format it as a pgvector string '[0.1,0.2,...]'.\nlet vector = embeddingResponse;\n\n// Handle nested array from Hugging Face\nif (Array.isArray(vector) && Array.isArray(vector[0])) {\n  vector = vector[0];\n}\n\n// If it's still an object/array, convert to pgvector string format\nif (Array.isArray(vector)) {\n  vector = '[' + vector.join(',') + ']';\n}\n\nreturn {\n  json: {\n    document_id: chunkData.document_id,\n    chunk_index: chunkData.chunk_index,\n    chunk_text: chunkData.chunk_text,\n    embedding: vector,\n    collection_name: chunkData.collection_name,\n    embedding_model: 'sentence-transformers/all-MiniLM-L6-v2'\n  }\n};"
+      },
+      "id": "f4b3e8c2-91a4-4d5f-b7c8-123456789abc",
+      "name": "Format Embedding for pgvector",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
         "tableId": "embeddings_metadata",
         "fieldsUi": {
           "fieldValues": [
             {
               "fieldId": "document_id",
-              "fieldValue": "={{ $('Process Each Chunk').first().json.document_id }}"
+              "fieldValue": "={{ $json.document_id }}"
             },
             {
               "fieldId": "chunk_index",
-              "fieldValue": "={{ $('Process Each Chunk').first().json.chunk_index }}"
+              "fieldValue": "={{ $json.chunk_index }}"
             },
             {
               "fieldId": "chunk_text",
-              "fieldValue": "={{ $('Process Each Chunk').first().json.chunk_text }}"
+              "fieldValue": "={{ $json.chunk_text }}"
             },
             {
               "fieldId": "embedding",
-              "fieldValue": "={{ $json.response }}"
+              "fieldValue": "={{ $json.embedding }}"
             },
             {
               "fieldId": "collection_name",
-              "fieldValue": "={{ $('Process Each Chunk').first().json.collection_name }}"
+              "fieldValue": "={{ $json.collection_name }}"
+            },
+            {
+              "fieldId": "embedding_model",
+              "fieldValue": "={{ $json.embedding_model }}"
             }
           ]
         }
@@ -99,8 +117,8 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        -192,
-        224
+        1440,
+        480
       ],
       "credentials": {
         "supabaseApi": {
@@ -118,22 +136,22 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        256,
-        320
+        720,
+        240
       ]
     },
     {
       "parameters": {
-        "content": "## Chunk and Embed\n\n**Purpose:** Processes text documents by chunking them into manageable segments and generating embeddings for vector search.\n\n**Input:** Expects `text_content`, `document_id`, and optional `collection_name` from calling workflow.\n\n**Process:**\n1. Splits text into ~2000 character chunks with 200 character overlap\n2. Processes each chunk individually through the loop\n3. Generates embeddings via KB__GenerateEmbedding workflow\n4. Stores chunk text + embedding in Supabase `embeddings_metadata` table\n\n**Output:** Returns `chunk_count` for tracking.\n\n**Used by:** KB workflows that need to index documents for semantic search.",
+        "content": "## Chunk and Embed\n\n**Purpose:** Processes text documents by chunking them into manageable segments and generating embeddings for vector search.\n\n**Input:** Expects `text_content`, `document_id`, and optional `collection_name` from calling workflow.\n\n**Process:**\n1. Splits text into ~2000 character chunks with 200 character overlap\n2. Iterates each chunk through Loop/SplitInBatches node\n3. Prepares embedding input and calls UTIL__AICall (embedding mode)\n4. Formats the Hugging Face response into a pgvector-compatible string\n5. Inserts chunk text + embedding vector into Supabase `embeddings_metadata` table\n6. Loops back for next chunk until all are processed\n\n**Output:** Returns `chunk_count` for tracking.\n\n**Used by:** KB__IngestDocument for indexing documents for semantic search.",
         "height": 672,
-        "width": 1312,
+        "width": 1700,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -848,
-        -80
+        -64,
+        -64
       ],
       "id": "c8ba2266-b553-4e9c-8b25-d7c6fd66169e",
       "name": "Sticky Note1"
@@ -167,6 +185,13 @@
       "main": [
         [
           {
+            "node": "Prepare Embedding Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Return Count",
             "type": "main",
             "index": 0
@@ -186,6 +211,17 @@
       ]
     },
     "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Format Embedding for pgvector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Embedding for pgvector": {
       "main": [
         [
           {
@@ -217,7 +253,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "2c52aa9b-b8d1-4de1-8b60-14338d8c9655",
+  "versionId": "f7a21c3e-9b84-4e17-a5d2-88c1d4920001",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

@@ -1,0 +1,388 @@
+{
+  "name": "DRIVE__ProcessUpload",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "PLACEHOLDER_GENERAL_UPLOAD_FOLDER_ID",
+          "mode": "id"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "position": [
+        200,
+        300
+      ],
+      "typeVersion": 1,
+      "id": "e4a50d2f-48d6-4171-8bc4-9d5a15328243",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "P4ItnczlmD9WHDuQ",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "rIRBjduPjTFXnn81",
+        "mode": "each",
+        "options": {}
+      },
+      "name": "Deduplicate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        400,
+        300
+      ],
+      "typeVersion": 1,
+      "id": "a93322f8-0f56-4c91-95bd-c34091a1829e"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isDuplicate }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Skip if Duplicate",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        600,
+        300
+      ],
+      "typeVersion": 1,
+      "id": "769ad102-1a42-4fdf-9730-cd74b0ed699e"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $('Google Drive Trigger').item.json.id }}",
+        "options": {}
+      },
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [
+        800,
+        320
+      ],
+      "typeVersion": 2,
+      "id": "848bb9ec-1bd7-49f3-85f2-95b6cf7da7a1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "P4ItnczlmD9WHDuQ",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  const fileName = $('Google Drive Trigger').item.json.name || '';\n  let text = '';\n\n  if (item.binary && item.binary.data) {\n    text = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n  } else {\n    text = item.json.content || item.json.text || '';\n  }\n\n  item.json.extracted_text = text;\n  item.json.file_name = fileName;\n}\nreturn $input.all();"
+      },
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1000,
+        320
+      ],
+      "typeVersion": 2,
+      "id": "00edbeeb-fddc-4c63-b8d2-43ce9fbfaec2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nreturn {\n  json: {\n    prompt: `Analyze the following document named \"${item.file_name}\". Classify its document type (e.g., Invoice, Contract, Receipt, Report, General) and provide a concise 2-sentence summary.\\n\\nDocument Text:\\n${item.extracted_text}`,\n    model_preference: 'fast',\n    output_format: 'json',\n    system_message: \"You are an operational AI assistant. Output JSON with strictly two fields: 'classification' (string) and 'summary' (string).\"\n  }\n};"
+      },
+      "name": "Prepare Prompt",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1200,
+        320
+      ],
+      "typeVersion": 2,
+      "id": "81f13f18-6bb7-4a00-ba09-54378f4b0fb5"
+    },
+    {
+      "parameters": {
+        "workflowId": "n8dUKBJ3yMSedWTk",
+        "mode": "each",
+        "options": {}
+      },
+      "name": "Classify & Summarize",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        1400,
+        320
+      ],
+      "typeVersion": 1,
+      "id": "c6214227-f6c1-4566-a36c-ff7b4b10b0fb"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResult = $('Classify & Summarize').first().json.response || {};\nconst fileInfo = $('Google Drive Trigger').first().json;\n\nlet parsed = aiResult;\nif (typeof aiResult === 'string') {\n  try { parsed = JSON.parse(aiResult); } catch(e) { parsed = { classification: 'Unknown', summary: aiResult }; }\n}\n\nreturn {\n  json: {\n    event_type: 'drive_upload',\n    source_id: fileInfo.id,\n    payload: {\n      file_name: fileInfo.name,\n      classification: parsed.classification,\n      summary: parsed.summary,\n      url: fileInfo.webViewLink\n    },\n    created_at: new Date().toISOString(),\n    status: 'processed'\n  }\n};"
+      },
+      "name": "Prepare DB Event",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1600,
+        320
+      ],
+      "typeVersion": 2,
+      "id": "673f32e9-46be-4c47-a841-f76db91a620b"
+    },
+    {
+      "parameters": {
+        "table": "events",
+        "columns": "event_type, source_id, payload, created_at, status",
+        "options": {}
+      },
+      "name": "Store Event",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        1800,
+        320
+      ],
+      "typeVersion": 1,
+      "id": "c353c7c6-db8a-441f-bb7e-fecbc6b75f85",
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const dbEvent = $('Prepare DB Event').first().json.payload;\n\nreturn {\n  json: {\n    channel: '#general-uploads',\n    message: `*New Document Processed:* <${dbEvent.url}|${dbEvent.file_name}>\\n*Classification:* ${dbEvent.classification}\\n*Summary:* ${dbEvent.summary}`\n  }\n};"
+      },
+      "name": "Prepare Notification",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2000,
+        320
+      ],
+      "typeVersion": 2,
+      "id": "31b40212-6be1-4b19-bda0-5d666d9b53ff"
+    },
+    {
+      "parameters": {
+        "workflowId": "nERkPtt59rc5Gfbm",
+        "mode": "each",
+        "options": {}
+      },
+      "name": "Notify Team",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        2200,
+        320
+      ],
+      "typeVersion": 1,
+      "id": "52213e8b-a316-43b9-a65c-6b7df0802cbb"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fileInfo = $('Google Drive Trigger').first().json;\n\nreturn {\n  json: {\n    workflow_name: 'DRIVE__ProcessUpload',\n    log_type: 'action',\n    action: 'process_drive_upload',\n    input_payload: { file_id: fileInfo.id, name: fileInfo.name },\n    status: 'success'\n  }\n};"
+      },
+      "name": "Prepare Audit",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2400,
+        320
+      ],
+      "typeVersion": 2,
+      "id": "4b68e0a2-ad2a-43cf-bc0a-c2ffb5871df4"
+    },
+    {
+      "parameters": {
+        "workflowId": "jCqmfSwQOsGcrJDa",
+        "mode": "each",
+        "options": {}
+      },
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        2600,
+        320
+      ],
+      "typeVersion": 1,
+      "id": "89b533d1-93e5-472a-9db1-35b7ccff32bc"
+    },
+    {
+      "parameters": {
+        "content": "## DRIVE__ProcessUpload\n\nAutomatically processes general file uploads to Google Drive:\n\n1. **Monitor** - Watches specific Inbox/Upload folder for new files\n2. **Deduplicate** - Checks if file has already been processed\n3. **Download** - Retrieves file content from Google Drive\n4. **Extract** - Parses text from the file\n5. **Classify & Summarize** - Determines document type and generates summary via AI\n6. **Store** - Saves event details to Supabase events table\n7. **Notify** - Sends Slack notification to #general-uploads\n8. **Audit Log** - Logs workflow completion",
+        "height": 450,
+        "width": 1000,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        200,
+        -100
+      ],
+      "typeVersion": 1,
+      "id": "d04d701e-28ff-45b7-a367-bf019803b9b4",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Skip if Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip if Duplicate": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Prepare Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Prompt": {
+      "main": [
+        [
+          {
+            "node": "Classify & Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify & Summarize": {
+      "main": [
+        [
+          {
+            "node": "Prepare DB Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare DB Event": {
+      "main": [
+        [
+          {
+            "node": "Store Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Event": {
+      "main": [
+        [
+          {
+            "node": "Prepare Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Notification": {
+      "main": [
+        [
+          {
+            "node": "Notify Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Team": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit": {
+      "main": [
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "Fa1qAUIxfJj6SjfY",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "id": "e0b57e7a-c71f-48d8-9a40-1a7eb3f62fa0",
+  "tags": []
+}
