@@ -157,6 +157,7 @@
       "parameters": {
         "operation": "update",
         "tableId": "events",
+        "matchColumns": "id",
         "fieldsUi": {
           "fieldValues": [
             {

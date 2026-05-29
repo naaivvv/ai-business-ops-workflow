@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const workflowName = $input.first().json.workflow.name;\nconst executionId = $input.first().json.execution.id;\nconst errorNode = $input.first().json.execution.error ? $input.first().json.execution.error.node : {};\nconst failedNode = errorNode.name || $input.first().json.execution.lastNodeExecuted || \"Unknown\";\nconst errorMessage = $input.first().json.execution.error ? $input.first().json.execution.error.message : \"Unknown Error\";\nconst executionLink = `https://edwin-bayog.app.n8n.cloud/workflow/executions/${executionId}`;\n\nreturn {\n  workflowName,\n  executionId,\n  failedNode,\n  errorMessage,\n  executionLink\n};"
+        "jsCode": "const workflowName = $input.first().json.workflow.name;\nconst executionId = $input.first().json.execution.id;\nconst errorNode = $input.first().json.execution.error ? $input.first().json.execution.error.node : {};\nconst failedNode = (errorNode && errorNode.name) || $input.first().json.execution.lastNodeExecuted || \"Unknown\";\nconst errorMessage = $input.first().json.execution.error ? $input.first().json.execution.error.message : \"Unknown Error\";\nconst executionLink = `https://edwin-bayog.app.n8n.cloud/workflow/executions/${executionId}`;\n\nreturn {\n  workflowName,\n  executionId,\n  failedNode,\n  errorMessage,\n  executionLink\n};"
       },
       "id": "f0156004-97d3-404f-a845-72f2b6bf496c",
       "name": "Extract Error Context",
@@ -33,7 +33,7 @@
           "value": "C0B62LSRCF8",
           "mode": "id"
         },
-        "text": "=🚨 *Workflow Failed*\n*Workflow:* {{$json.workflowName}}\n*Failed Node:* {{$json.failedNode}}\n*Error:* {{$json.errorMessage}}\n*Execution:* {{$json.executionLink}}",
+        "text": "=\u00f0\u0178\u0161\u00a8 *Workflow Failed*\n*Workflow:* {{$json.workflowName}}\n*Failed Node:* {{$json.failedNode}}\n*Error:* {{$json.errorMessage}}\n*Execution:* {{$json.executionLink}}",
         "otherOptions": {}
       },
       "id": "c98b32f0-9e58-438f-8101-2f5960868bdb",

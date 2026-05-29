@@ -7,7 +7,8 @@
           "item": [
             {
               "mode": "everyX",
-              "value": 5
+              "value": 1,
+              "unit": "minutes"
             }
           ]
         },
@@ -20,13 +21,13 @@
         "event": "fileCreated",
         "options": {}
       },
-      "id": "1e6d532b-e29c-46fc-92c3-9d1250a3d893",
+      "id": "875435e9-128a-4f4c-b167-c14cee554aa0",
       "name": "Google Drive Trigger",
       "type": "n8n-nodes-base.googleDriveTrigger",
       "typeVersion": 1,
       "position": [
-        -224,
-        128
+        6048,
+        2224
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -37,16 +38,29 @@
     },
     {
       "parameters": {
+        "jsCode": "const file = $input.first().json;\n\nreturn [{\n  json: {\n    source: 'drive',\n    dedup_key: file.id,\n    event_type: 'kb_ingestion'\n  }\n}];"
+      },
+      "id": "d00d2b85-c2fd-4e97-9509-db4b67ac7a8b",
+      "name": "Prepare Dedup Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6224,
+        2224
+      ]
+    },
+    {
+      "parameters": {
         "workflowId": "rIRBjduPjTFXnn81",
         "options": {}
       },
-      "id": "13f5dad6-95a8-413d-9036-3e7e9c145738",
+      "id": "ae2d02b6-8928-443c-a6fb-56255e8fbaa4",
       "name": "Deduplicate",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        0,
-        128
+        6432,
+        2224
       ]
     },
     {
@@ -60,13 +74,13 @@
           ]
         }
       },
-      "id": "a8fb21a0-28ce-4bc0-8288-93463b5b5ef4",
+      "id": "2a192f5d-12c9-491c-b5f7-10ce967d5541",
       "name": "Skip if Duplicate",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        224,
-        128
+        6656,
+        2224
       ]
     },
     {
@@ -75,13 +89,13 @@
         "fileId": "={{ $('Google Drive Trigger').item.json.id }}",
         "options": {}
       },
-      "id": "e0b9886a-d832-4b62-aa55-1004123ce642",
+      "id": "689da634-7ba9-43d4-9c14-a0e61862b672",
       "name": "Download File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 2,
       "position": [
-        448,
-        128
+        6880,
+        2224
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -92,35 +106,34 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  let text = '';\n  const mimeType = item.json.mimeType || $('Google Drive Trigger').item.json.mimeType;\n  \n  if (mimeType === 'application/vnd.google-apps.document' || mimeType === 'text/plain') {\n    // Text directly from Drive\n    if (item.binary && item.binary.data) {\n       text = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n    }\n  }\n  item.json.extracted_text = text;\n  item.json.source_type = mimeType === 'application/pdf' ? 'pdf' : \n                         (mimeType === 'application/vnd.google-apps.document' ? 'google_doc' : \n                         (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? 'docx' : 'unknown'));\n  item.json.title = $('Google Drive Trigger').item.json.name;\n  item.json.source_file_id = $('Google Drive Trigger').item.json.id;\n  return item;\n});"
+        "jsCode": "const items = $input.all();\n\nfor (let i = 0; i < items.length; i++) {\n  let text = '';\n  // Get mimeType from current item or fallback to trigger item\n  const mimeType = items[i].json.mimeType || $('Google Drive Trigger').item.json.mimeType;\n  \n  if (mimeType === 'application/vnd.google-apps.document' || mimeType === 'text/plain') {\n    if (items[i].binary && items[i].binary.data) {\n       // FIX 1: Use n8n's native binary helper to read the file off the disk securely\n       const buffer = await this.helpers.getBinaryDataBuffer(i, 'data');\n       text = buffer.toString('utf8');\n    }\n  }\n  items[i].json.extracted_text = text;\n  \n  // FIX 2: Map text/plain to 'sop' to satisfy your Postgres database constraints\n  let type = 'unknown';\n  if (mimeType === 'application/pdf') type = 'pdf';\n  else if (mimeType === 'application/vnd.google-apps.document') type = 'google_doc';\n  else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') type = 'docx';\n  else if (mimeType === 'text/plain') type = 'sop'; \n  \n  items[i].json.source_type = type;\n  items[i].json.title = $('Google Drive Trigger').item.json.name;\n  items[i].json.source_file_id = $('Google Drive Trigger').item.json.id;\n}\n\nreturn items;"
       },
-      "id": "afbc00a5-1488-407e-88a2-9e419cf113f4",
+      "id": "97f2cc0a-aba5-47cf-8d39-3366e5805daa",
       "name": "Extract Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
-        128
+        7104,
+        2224
       ]
     },
     {
       "parameters": {
         "jsCode": "const crypto = require('crypto');\nconst items = $input.all();\n\nreturn items.map(item => {\n  const text = item.json.extracted_text || '';\n  const hash = crypto.createHash('sha256').update(text).digest('hex');\n  item.json.content_hash = hash;\n  return item;\n});"
       },
-      "id": "7163e297-563a-4088-9eca-5e97e684ba61",
+      "id": "714656c9-2f11-45a8-b40e-24b35e33d7a5",
       "name": "Compute Content Hash",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        128
+        7328,
+        2224
       ]
     },
     {
       "parameters": {
         "operation": "getAll",
         "tableId": "documents",
-        "limit": 1,
         "filters": {
           "conditions": [
             {
@@ -131,14 +144,15 @@
           ]
         }
       },
-      "id": "be816820-b7ea-4f24-a18b-048a922b971f",
+      "id": "5d3b3b13-01b4-4d1d-a9a0-4a3895959866",
       "name": "Check Existing Document",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1120,
-        128
+        7552,
+        2224
       ],
+      "alwaysOutputData": true,
       "credentials": {
         "supabaseApi": {
           "id": "goFlWTHKylYQ7NES",
@@ -157,13 +171,46 @@
           ]
         }
       },
-      "id": "553cf88d-e1f5-4b14-a209-60e4128e370c",
+      "id": "7f6e2a52-fce9-485d-8171-a2f08fc8b7f8",
       "name": "Document Changed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        1344,
-        128
+        7776,
+        2224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const existing = $input.first().json;\nconst newDoc = $('Compute Content Hash').first().json;\n\nreturn [{\n  json: {\n    id: existing.id || null,\n    is_update: !!existing.id,\n    title: newDoc.title,\n    source_type: newDoc.source_type,\n    source_file_id: newDoc.source_file_id,\n    content_hash: newDoc.content_hash,\n    status: 'processing',\n    text_content: newDoc.extracted_text\n  }\n}];"
+      },
+      "id": "7f6751e0-8ece-4758-a697-2d783d001246",
+      "name": "Prepare Document Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8000,
+        2256
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_update }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "5b5d337c-f1a2-4574-9dff-1482dfdf736e",
+      "name": "Is Update?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        8224,
+        2256
       ]
     },
     {
@@ -180,13 +227,63 @@
           ]
         }
       },
-      "id": "a3a9f421-8b0d-4309-8451-e84012c31bad",
+      "id": "aac8e9c8-573f-47b6-be88-9e8611c05238",
       "name": "Delete Old Embeddings Metadata",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1568,
-        128
+        8448,
+        2144
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "documents",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Prepare Document Payload').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('Prepare Document Payload').item.json.title }}"
+            },
+            {
+              "fieldId": "source_type",
+              "fieldValue": "={{ $('Prepare Document Payload').item.json.source_type }}"
+            },
+            {
+              "fieldId": "content_hash",
+              "fieldValue": "={{ $('Prepare Document Payload').item.json.content_hash }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $('Prepare Document Payload').item.json.status }}"
+            }
+          ]
+        }
+      },
+      "id": "f32a303b-54c4-409f-b6ed-09ec138e7bb1",
+      "name": "Update Document",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        8672,
+        2144
       ],
       "credentials": {
         "supabaseApi": {
@@ -197,41 +294,44 @@
     },
     {
       "parameters": {
-        "operation": "upsert"
+        "jsCode": "const dbRow = $input.first().json;\nconst payload = $('Prepare Document Payload').first().json;\n\nreturn [{\n  json: {\n    document_id: dbRow.id,\n    text_content: payload.text_content,\n    collection_name: 'knowledge_base'\n  }\n}];"
       },
-      "id": "a8f286e5-d10e-4ce7-9054-983f9bd3dcbd",
-      "name": "Upsert Document",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "id": "4b681511-431e-446a-953c-50032741ae97",
+      "name": "Prepare for Chunking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        1792,
-        128
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "goFlWTHKylYQ7NES",
-          "name": "Supabase account"
-        }
-      }
+        8896,
+        2256
+      ]
     },
     {
       "parameters": {
         "workflowId": "3zE30DDyaAnXJNPS",
         "options": {}
       },
-      "id": "b9aef027-3450-484d-8445-2d0d35d24890",
+      "id": "cce26ff3-436e-4eef-b407-c57a53b5d5cc",
       "name": "Chunk and Embed",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        2016,
-        128
+        9120,
+        2256
       ]
     },
     {
       "parameters": {
         "operation": "update",
         "tableId": "documents",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Prepare for Chunking').item.json.document_id }}"
+            }
+          ]
+        },
         "fieldsUi": {
           "fieldValues": [
             {
@@ -249,13 +349,13 @@
           ]
         }
       },
-      "id": "5e797388-068f-4a10-bed2-701b4e9b2c4b",
+      "id": "f90f0056-9ad6-499c-8d14-ad997c7b6593",
       "name": "Mark Complete",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2240,
-        128
+        9344,
+        2256
       ],
       "credentials": {
         "supabaseApi": {
@@ -266,38 +366,250 @@
     },
     {
       "parameters": {
+        "jsCode": "return [{\n  json: {\n    workflow_name: 'KB__IngestDocument',\n    log_type: 'action',\n    action: 'Ingest Document Completed',\n    status: 'success',\n    input_payload: { document_id: $('Prepare for Chunking').first().json.document_id },\n    output_payload: $input.first().json\n  }\n}];"
+      },
+      "id": "c77bb461-4b7e-4f51-aa8e-bde8a15d0592",
+      "name": "Prepare Audit Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9552,
+        2256
+      ]
+    },
+    {
+      "parameters": {
         "workflowId": "jCqmfSwQOsGcrJDa",
         "options": {}
       },
-      "id": "ef74a44a-d29c-4baf-9a0f-6d9ac307cf58",
+      "id": "237f4921-23d2-4a3a-aa79-03c6a93cd0fa",
       "name": "Audit Log",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        2464,
-        128
+        9744,
+        2256
       ]
     },
     {
       "parameters": {
         "content": "## Ingest Document\n\nMonitors a Google Drive folder for new documents. When a file is created:\n1. Deduplicates to prevent reprocessing\n2. Downloads and extracts text content\n3. Computes content hash to detect changes\n4. Checks if document already exists in Supabase\n5. If changed: deletes old embeddings, upserts document record\n6. Chunks text and generates embeddings\n7. Marks document as complete and logs to audit trail",
-        "height": 480,
-        "width": 2960,
+        "height": 592,
+        "width": 3968,
         "color": 3
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -280,
-        -144
+        6000,
+        1952
       ],
-      "id": "b4972602-30a9-465d-b398-bac493dfaeb0",
+      "id": "52f76754-e10e-4f49-8858-fb69e92cfcb9",
       "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "tableId": "documents",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.title }}"
+            },
+            {
+              "fieldId": "source_type",
+              "fieldValue": "={{ $json.source_type }}"
+            },
+            {
+              "fieldId": "source_file_id",
+              "fieldValue": "={{ $json.source_file_id }}"
+            },
+            {
+              "fieldId": "content_hash",
+              "fieldValue": "={{ $json.content_hash }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            }
+          ]
+        }
+      },
+      "id": "fa28e289-549d-454a-947e-6144889c2789",
+      "name": "Insert Document",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        8448,
+        2352
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "goFlWTHKylYQ7NES",
+          "name": "Supabase account"
+        }
+      }
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "Google Drive Trigger": [
+      {
+        "json": {
+          "kind": "drive#file",
+          "fileExtension": "txt",
+          "copyRequiresWriterPermission": false,
+          "md5Checksum": "c253db138c38f9904fca6b2ed087ba54",
+          "writersCanShare": true,
+          "viewedByMe": true,
+          "mimeType": "text/plain",
+          "parents": [
+            "1AcOJD5A3-Hap_mLJuMtWXHvn0sVx_NBd"
+          ],
+          "thumbnailLink": "https://lh3.googleusercontent.com/drive-storage/AJQWtBPaZbBfVJ0SpcycmYekW30M1kLlUjb2B3bSwyLrEVPsKUv7dSXFdRFsNk_nItl97WgADKcoFMLE7PbIIzFZcJp6_mIyUcL3AoMqoaXVK7L-eWzXbw=s220",
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/text/plain",
+          "shared": false,
+          "lastModifyingUser": {
+            "displayName": "Edwin Bayog",
+            "kind": "drive#user",
+            "me": true,
+            "permissionId": "16004367826657254104",
+            "emailAddress": "edwinbayog07@gmail.com",
+            "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocKJZuV-GGAxP9dSj215jMx5rURhlLXRKz1hxGoJCr9VC3d9Hbhmjg=s64"
+          },
+          "owners": [
+            {
+              "displayName": "Edwin Bayog",
+              "kind": "drive#user",
+              "me": true,
+              "permissionId": "16004367826657254104",
+              "emailAddress": "edwinbayog07@gmail.com",
+              "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocKJZuV-GGAxP9dSj215jMx5rURhlLXRKz1hxGoJCr9VC3d9Hbhmjg=s64"
+            }
+          ],
+          "headRevisionId": "0B1CXVpeihGy_bzhqWmxKWHZwR1c3cFFiZjVqaFJHcU1ZU0NVPQ",
+          "webViewLink": "https://drive.google.com/file/d/1_8PsGCEpX5xDrjqVKt0fGVTTqpJ5vfry/view?usp=drivesdk",
+          "webContentLink": "https://drive.google.com/uc?id=1_8PsGCEpX5xDrjqVKt0fGVTTqpJ5vfry&export=download",
+          "size": "572",
+          "viewersCanCopyContent": true,
+          "permissions": [
+            {
+              "id": "16004367826657254104",
+              "displayName": "Edwin Bayog",
+              "type": "user",
+              "kind": "drive#permission",
+              "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocKJZuV-GGAxP9dSj215jMx5rURhlLXRKz1hxGoJCr9VC3d9Hbhmjg=s64",
+              "emailAddress": "edwinbayog07@gmail.com",
+              "role": "owner",
+              "deleted": false,
+              "pendingOwner": false
+            }
+          ],
+          "hasThumbnail": true,
+          "spaces": [
+            "drive"
+          ],
+          "id": "1_8PsGCEpX5xDrjqVKt0fGVTTqpJ5vfry",
+          "name": "Employee Data Access Policy — Standard Operating Procedure.txt",
+          "starred": false,
+          "trashed": false,
+          "explicitlyTrashed": false,
+          "createdTime": "2026-05-29T06:41:15.400Z",
+          "modifiedTime": "2026-05-29T06:43:56.000Z",
+          "modifiedByMeTime": "2026-05-29T06:43:56.000Z",
+          "viewedByMeTime": "2026-05-29T06:41:15.400Z",
+          "quotaBytesUsed": "572",
+          "version": "3",
+          "originalFilename": "Employee Data Access Policy — Standard Operating Procedure.txt",
+          "ownedByMe": true,
+          "fullFileExtension": "txt",
+          "isAppAuthorized": false,
+          "capabilities": {
+            "canChangeViewersCanCopyContent": true,
+            "canEdit": true,
+            "canCopy": true,
+            "canComment": true,
+            "canAddChildren": false,
+            "canDelete": true,
+            "canDownload": true,
+            "canListChildren": false,
+            "canRemoveChildren": false,
+            "canRename": true,
+            "canTrash": true,
+            "canReadRevisions": true,
+            "canChangeCopyRequiresWriterPermission": true,
+            "canMoveItemIntoTeamDrive": true,
+            "canUntrash": true,
+            "canModifyContent": true,
+            "canMoveItemOutOfDrive": true,
+            "canAddMyDriveParent": false,
+            "canRemoveMyDriveParent": true,
+            "canMoveItemWithinDrive": true,
+            "canShare": true,
+            "canMoveChildrenWithinDrive": false,
+            "canModifyContentRestriction": true,
+            "canChangeSecurityUpdateEnabled": false,
+            "canAcceptOwnership": false,
+            "canReadLabels": false,
+            "canModifyLabels": false,
+            "canModifyEditorContentRestriction": true,
+            "canModifyOwnerContentRestriction": true,
+            "canRemoveContentRestriction": false,
+            "canDisableInheritedPermissions": false,
+            "canEnableInheritedPermissions": true,
+            "canChangeItemDownloadRestriction": true,
+            "canStartApproval": false
+          },
+          "thumbnailVersion": "1",
+          "modifiedByMe": true,
+          "permissionIds": [
+            "16004367826657254104"
+          ],
+          "linkShareMetadata": {
+            "securityUpdateEligible": false,
+            "securityUpdateEnabled": true
+          },
+          "sha1Checksum": "a7921528217d5fd4132280df1b123a415c6f6157",
+          "sha256Checksum": "53f07d9d592996af99a68c5aef602b9aa438db2022a0ee3d00e3422c79bf7f4c",
+          "inheritedPermissionsDisabled": false,
+          "downloadRestrictions": {
+            "itemDownloadRestriction": {
+              "restrictedForReaders": false,
+              "restrictedForWriters": false
+            },
+            "effectiveDownloadRestrictionWithContext": {
+              "restrictedForReaders": false,
+              "restrictedForWriters": false
+            }
+          },
+          "clientEncryptionDetails": {
+            "decryptionMetadata": {
+              "wrappedKey": "",
+              "kaclsId": "0",
+              "aes256GcmChunkSize": "unset",
+              "keyFormat": "unsetKeyFormat",
+              "encryptionResourceKeyHash": ""
+            }
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
   "connections": {
     "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Dedup Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Dedup Input": {
       "main": [
         [
           {
@@ -380,7 +692,36 @@
         [],
         [
           {
+            "node": "Prepare Document Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Document Payload": {
+      "main": [
+        [
+          {
+            "node": "Is Update?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Update?": {
+      "main": [
+        [
+          {
             "node": "Delete Old Embeddings Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert Document",
             "type": "main",
             "index": 0
           }
@@ -391,14 +732,25 @@
       "main": [
         [
           {
-            "node": "Upsert Document",
+            "node": "Update Document",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upsert Document": {
+    "Update Document": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Chunking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for Chunking": {
       "main": [
         [
           {
@@ -424,7 +776,29 @@
       "main": [
         [
           {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit Log": {
+      "main": [
+        [
+          {
             "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Document": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Chunking",
             "type": "main",
             "index": 0
           }
@@ -432,16 +806,16 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "timeSavedMode": "fixed",
     "errorWorkflow": "Fa1qAUIxfJj6SjfY",
     "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
+    "availableInMCP": true
   },
-  "versionId": "e0609c16-2274-4d0c-b802-5c6580ab7796",
+  "versionId": "29b99274-876c-4eeb-bf8f-9d0b12508202",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

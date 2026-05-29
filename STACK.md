@@ -5,7 +5,7 @@
 
 # Core Automation
 
-## n8n
+## n8n (Version2.21.7)
 
 Purpose:
 

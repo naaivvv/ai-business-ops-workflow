@@ -23,12 +23,25 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery"
+        "resource": "row",
+        "operation": "getMany",
+        "tableId": "tasks",
+        "returnAll": true,
+        "filterType": "manual",
+        "matchUi": {
+          "matchValues": [
+            {
+              "matchColumn": "status",
+              "matchOperator": "neq",
+              "matchValue": "completed"
+            }
+          ]
+        }
       },
       "id": "4d17d011-19ae-4ab5-865a-31a089de2932",
       "name": "Query Overdue Unescalated",
       "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         272,
         384
@@ -76,7 +89,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const now = Date.now();\n\nreturn $input.all()\n  .filter(item => item.json && item.json.id)\n  .map(item => {\n    const task = item.json;\n    const deadlineTime = task.deadline ? new Date(task.deadline).getTime() : now;\n    const hoursOverdue = Math.max(0, Math.floor((now - deadlineTime) / (1000 * 60 * 60)));\n    const assigneeName = task.assignee_name || task.assignee_email || 'Unassigned';\n    const deadline = task.deadline || 'No deadline';\n\n    return {\n      json: {\n        ...task,\n        hours_overdue: hoursOverdue,\n        manager_message: `🚨 *Task Escalation*\\n*Task:* ${task.title || 'Untitled task'}\\n*Assigned to:* ${assigneeName}\\n*Deadline:* ${deadline} (overdue by ${hoursOverdue} hours)\\n*Priority:* Upgraded to CRITICAL`,\n        ops_message: `🚨 *Task Escalated*\\n*Task:* ${task.title || 'Untitled task'}\\n*Assigned to:* ${assigneeName}\\n*Manager:* ${task.manager_name || 'No manager on file'}\\n*Deadline:* ${deadline}\\n*Overdue:* ${hoursOverdue} hours\\n*Priority:* Upgraded to CRITICAL`\n      }\n    };\n  });"
+        "jsCode": "const now = Date.now();\n\nconst items = $input.all().filter(item => item.json && item.json.id);\nconst validItems = [];\n\nfor (const item of items) {\n  const task = item.json;\n  \n  if (task.escalated_at) continue;\n  if (task.status === 'completed') continue;\n\n  const deadlineTime = task.deadline ? new Date(task.deadline).getTime() : null;\n  if (!deadlineTime) continue;\n\n  const hoursOverdue = Math.max(0, Math.floor((now - deadlineTime) / (1000 * 60 * 60)));\n  if (hoursOverdue < 24) continue;\n\n  const assigneeName = task.assignee_name || task.assignee_email || 'Unassigned';\n  const deadline = task.deadline || 'No deadline';\n\n  validItems.push({\n    json: {\n      ...task,\n      hours_overdue: hoursOverdue,\n      manager_message: `🚨 *Task Escalation*\\n*Task:* ${task.title || 'Untitled task'}\\n*Assigned to:* ${assigneeName}\\n*Deadline:* ${deadline} (overdue by ${hoursOverdue} hours)\\n*Priority:* Upgraded to CRITICAL`,\n      ops_message: `🚨 *Task Escalated*\\n*Task:* ${task.title || 'Untitled task'}\\n*Assigned to:* ${assigneeName}\\n*Manager:* ${task.manager_name || 'No manager on file'}\\n*Deadline:* ${deadline}\\n*Overdue:* ${hoursOverdue} hours\\n*Priority:* Upgraded to CRITICAL`\n    }\n  });\n}\n\nreturn validItems;"
       },
       "id": "8f21b2df-5091-4d2c-8394-b76cfeec1786",
       "name": "Prepare Escalation Details",
@@ -105,6 +118,7 @@
       "parameters": {
         "operation": "update",
         "tableId": "tasks",
+        "matchColumns": "id",
         "fieldsUi": {
           "fieldValues": [
             {

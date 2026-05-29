@@ -152,6 +152,7 @@
       "parameters": {
         "operation": "update",
         "tableId": "approvals",
+        "matchColumns": "id",
         "fieldsUi": {
           "fieldValues": [
             {
