@@ -48,7 +48,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2",
+        "url": "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "huggingFaceApi",
         "sendBody": true,
@@ -61,8 +61,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1760,
-        -224
+        1584,
+        -192
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -174,7 +174,7 @@
     },
     {
       "parameters": {
-        "content": "## AI Call Utility Workflow (Optimized)\n\n**Purpose:** Centralized AI inference service utilizing OpenRouter auto-routing and usage tracking.\n\n**Process:**\n1. **Trigger:** Called by other workflows with AI request parameters\n2. **Model Selection:** Routes to Hugging Face (embeddings) or OpenRouter (text)\n3. **Usage Tracking:** Calculates tokens, latency, cost and logs to central analytics workflow\n4. **Response:** Returns AI output with metadata (model used, tokens, latency, cost)\n\n**Input:** `{ prompt, model_preference?, system_message?, max_tokens?, output_format? }`\n**Output:** `{ response, model_used, tokens_input, tokens_output, latency_ms, cost_usd }`",
+        "content": "## AI Call Utility Workflow\n\n**Purpose:** Centralized AI inference service utilizing OpenRouter auto-routing and usage tracking.\n\n**Process:**\n1. **Trigger:** Called by other workflows with AI request parameters\n2. **Model Selection:** Routes to Hugging Face (embeddings) or OpenRouter (text)\n3. **Usage Tracking:** Calculates tokens, latency, cost and logs to central analytics workflow\n4. **Response:** Returns AI output with metadata (model used, tokens, latency, cost)\n\n**Input:** `{ prompt, model_preference?, system_message?, max_tokens?, output_format? }`\n**Output:** `{ response, model_used, tokens_input, tokens_output, latency_ms, cost_usd }`",
         "height": 704,
         "width": 2116,
         "color": 6
@@ -189,7 +189,20 @@
       "name": "Sticky Note1"
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "test_name": "Hugging Face Embedding",
+          "prompt": "This is a test sentence to convert into a vector embedding.",
+          "model_preference": "embedding"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
   "connections": {
     "When Executed by Another Workflow": {
       "main": [
@@ -307,7 +320,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "321f96ee-37b4-4380-b7ce-bf164e674b0e",
+  "versionId": "33b821cb-906a-4b88-828e-4b4472cfb2f1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"

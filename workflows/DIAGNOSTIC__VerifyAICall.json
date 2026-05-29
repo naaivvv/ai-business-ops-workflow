@@ -1,97 +1,107 @@
 {
-    "name": "DIAGNOSTIC__VerifyAICall",
-    "nodes": [
-        {
-            "parameters": {},
-            "id": "manual-trigger-id",
-            "name": "When clicking \"Test workflow\"",
-            "type": "n8n-nodes-base.manualTrigger",
-            "typeVersion": 1,
-            "position": [
-                0,
-                0
-            ]
-        },
-        {
-            "parameters": {
-                "jsCode": "return [\n  {\n    json: {\n      test_name: \"Primary Fast LLM\",\n      prompt: \"Respond with exactly the word 'ONLINE'.\",\n      model_preference: \"fast\",\n      system_message: \"You are a validation tester. Be brief.\"\n    }\n  },\n  {\n    json: {\n      test_name: \"Failover / Large Context LLM\",\n      prompt: \"Respond with exactly the word 'ONLINE'.\",\n      model_preference: \"large-context\",\n      system_message: \"You are a validation tester. Be brief.\"\n    }\n  },\n  {\n    json: {\n      test_name: \"Hugging Face Embedding\",\n      prompt: \"Verify embedding matrix generation latency and dimension payload.\",\n      model_preference: \"embedding\"\n    }\n  }\n];"
-            },
-            "id": "generate-cases-id",
-            "name": "Generate Test Cases",
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                220,
-                0
-            ]
-        },
-        {
-            "parameters": {
-                "workflowId": "n8dUKBJ3yMSedWTk",
-                "options": {}
-            },
-            "id": "execute-aicall-id",
-            "name": "Execute AICall Utility",
-            "type": "n8n-nodes-base.executeWorkflow",
-            "typeVersion": 1,
-            "position": [
-                440,
-                0
-            ],
-            "settings": {
-                "continueOnFail": true
-            }
-        },
-        {
-            "parameters": {
-                "jsCode": "const items = $input.all();\nconst summary = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i].json;\n  // Match back to the original test inputs via paired item context\n  const originalTest = $('Generate Test Cases').all()[i]?.json || {};\n  \n  let status = \"🟢 PASS\";\n  let notes = \"Model responded successfully.\";\n  \n  if (item.error || !item.response || (typeof item.response === 'string' && item.response.startsWith(\"ERROR:\"))) {\n    status = \"🔴 FAIL\";\n    notes = item.error?.message || item.response || \"Unknown API or Network error.\";\n  }\n\n  summary.push({\n    json: {\n      test_name: originalTest.test_name,\n      model_preference: originalTest.model_preference,\n      model_used: item.model_used || (originalTest.model_preference === 'embedding' ? 'all-MiniLM-L6-v2' : 'Unknown'),\n      status: status,\n      latency: item.latency_ms ? `${item.latency_ms}ms` : 'N/A',\n      tokens_used: item.tokens_input ? (item.tokens_input + item.tokens_output) : 0,\n      response_sample: typeof item.response === 'object' ? `Vector Array (Length: ${item.response.length || 0})` : String(item.response).substring(0, 60),\n      error_details: notes\n    }\n  });\n}\n\nreturn summary;"
-            },
-            "id": "compile-dashboard-id",
-            "name": "Compile Diagnostics Dashboard",
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                660,
-                0
-            ]
-        }
-    ],
-    "connections": {
-        "When clicking \"Test workflow\"": {
-            "main": [
-                [
-                    {
-                        "node": "Generate Test Cases",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Generate Test Cases": {
-            "main": [
-                [
-                    {
-                        "node": "Execute AICall Utility",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Execute AICall Utility": {
-            "main": [
-                [
-                    {
-                        "node": "Compile Diagnostics Dashboard",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        }
+  "name": "DIAGNOSTIC__VerifyAICall",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "7a264b9d-d393-43e4-a69f-a6e76865af94",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -176
+      ]
     },
-    "settings": {
-        "executionOrder": "v1"
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      test_name: \"Hugging Face Embedding\",\n      prompt: \"This is a test sentence to convert into a vector embedding.\",\n      model_preference: \"embedding\"\n    }\n  }\n];"
+      },
+      "id": "35f33b7a-2303-4698-9cfc-5780a5c9d116",
+      "name": "Generate Test Cases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "n8dUKBJ3yMSedWTk",
+        "options": {}
+      },
+      "id": "98b23970-a7ed-4136-b551-136e06f2b6f1",
+      "name": "Execute AICall Utility",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        -176
+      ],
+      "settings": {
+        "continueOnFail": true
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst summary = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i].json;\n  // Match back to the original test inputs via paired item context\n  const originalTest = $('Generate Test Cases').all()[i]?.json || {};\n  \n  let status = \"🟢 PASS\";\n  let notes = \"Model responded successfully.\";\n  \n  if (item.error || !item.response || (typeof item.response === 'string' && item.response.startsWith(\"ERROR:\"))) {\n    status = \"🔴 FAIL\";\n    notes = item.error?.message || item.response || \"Unknown API or Network error.\";\n  }\n\n  // Enhanced array validation for Hugging Face embeddings\n  let responseSample = \"N/A\";\n  if (originalTest.model_preference === 'embedding' && Array.isArray(item.response)) {\n    // Extract the vector dimensions from the first array element\n    const dimensions = Array.isArray(item.response[0]) ? item.response[0].length : item.response.length;\n    responseSample = `✅ Vector Array generated (Dimensions: ${dimensions})`;\n  } else {\n    responseSample = String(item.response).substring(0, 60);\n  }\n\n  summary.push({\n    json: {\n      test_name: originalTest.test_name,\n      model_preference: originalTest.model_preference,\n      model_used: item.model_used || 'all-MiniLM-L6-v2',\n      status: status,\n      latency: item.latency_ms ? `${item.latency_ms}ms` : 'N/A',\n      response_sample: responseSample,\n      error_details: notes\n    }\n  });\n}\n\nreturn summary;"
+      },
+      "id": "81501470-305e-42bd-937c-012d86f2fd24",
+      "name": "Compile Diagnostics Dashboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -176
+      ]
     }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Generate Test Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Test Cases": {
+      "main": [
+        [
+          {
+            "node": "Execute AICall Utility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute AICall Utility": {
+      "main": [
+        [
+          {
+            "node": "Compile Diagnostics Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a9c3d030-0ede-4192-b4b1-1982fee5cbcc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "139ce20edbcea09d90a1c08060a8c9b48d3304d3001c573472319fb5fdf7461e"
+  },
+  "id": "EMJxwReSRkkr6Pvy",
+  "tags": []
 }
